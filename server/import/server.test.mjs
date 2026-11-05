@@ -8,6 +8,7 @@ import http from 'node:http'
 import { spawnSync } from 'node:child_process'
 import { startServer } from './server.mjs'
 import { configFromEnv, root } from './config.mjs'
+import { chartFixture } from '../../scripts/test-convert/_chart-import-fixtures.ts'
 import { fxMinimal } from '../../scripts/test-convert/_fixtures.ts'
 import { readZip, writeZip } from '../../kernel/src/convert/zip.ts'
 import { preflight } from '../../convert/src/limits.ts'
@@ -78,6 +79,26 @@ try {
       const headers = { Cookie: cookie.split(';')[0] }
       assert.equal((await post(app, fixture, { ...headers, Origin: 'https://evil.example' })).status, 403)
       assert.equal((await post(app, fixture, headers)).status, 202)
+    } finally { await app.close() }
+  })
+  await test('native chart survives the real worker, shape gate and downloaded HTML', async () => {
+    const app = await launch()
+    try {
+      const uploaded = await post(app, await chartFixture())
+      assert.equal(uploaded.status, 202)
+      const job = await terminal(app.url, uploaded.data.id)
+      assert.equal(job.state, 'done', job.error)
+      const html = await (await fetch(app.url + job.download)).text()
+      const block = html.match(/<script[^>]*id="bento-doc"[^>]*>([\s\S]*?)<\/script>/)?.[1]
+      assert.ok(block)
+      const chart = JSON.parse(block).slides[0].elements[0]
+      assert.equal(chart.type, 'chart')
+      assert.equal(chart.option.chart.type, 'column')
+      assert.deepEqual(chart.option.series[0].data, [12,null,-4.25])
+      assert.deepEqual(chart.option.xAxis.categories, ['基线','第2周','第4周'])
+      const report = await (await fetch(app.url + job.report)).json()
+      assert.deepEqual(report.gated, [])
+      assert.ok(report.entries.some(e=>e.code==='chart-imported-from-cache'))
     } finally { await app.close() }
   })
   await test('oversized, malformed and traversal uploads release their slots', async () => {
