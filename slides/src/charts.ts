@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 The Bento authors
-// Facade: the charts-lite engine lives in the shared kernel now
-// (kernel/src/charts.ts). It reads only {w, h, option}; slides' ChartElement
-// satisfies that structurally, so call sites are unchanged.
-export * from '../../kernel/src/charts.ts'
+// Highcharts is the only chart renderer in this fork.
+import { highchartsSnapshot, mountHighcharts } from './highcharts'
+import { normalizeChartOptions } from './highcharts-options'
+export { HIGHCHARTS_PRESETS as CHART_PRESETS, HIGHCHARTS_PRESETS } from './highcharts-options'
+export interface ChartInput { w: number; h: number; option: Record<string, unknown> }
+export function chartSnapshotSvg(el: ChartInput): string {
+  return highchartsSnapshot({ ...el, option: normalizeChartOptions(el.option) })
+}
+export function mountChart(el: ChartInput, host: HTMLElement, _fromOption?: Record<string, unknown>): () => void {
+  return mountHighcharts({ ...el, option: normalizeChartOptions(el.option) }, host)
+}

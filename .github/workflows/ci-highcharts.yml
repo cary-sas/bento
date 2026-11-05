@@ -1,0 +1,52 @@
+name: Highcharts and CSV
+on:
+  pull_request:
+    paths: ['slides/**', 'convert/**', 'schema/slides.json', 'scripts/build-slides-single.mjs', 'scripts/postbuild-compress.mjs', '.github/workflows/ci-highcharts.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  highcharts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: slides/package-lock.json
+      - run: npm ci --prefix slides --no-audit --no-fund
+      - run: npm run build:single --prefix slides
+      - name: Typecheck and data/CSV tests
+        run: |
+          node slides/node_modules/typescript/bin/tsc -p convert
+          node --test slides/tests/highcharts-data.test.mjs
+          node --test server/import/server.test.mjs
+          node scripts/build-modelkeys.mjs --check
+          node scripts/build-i18n.mjs --check
+          node scripts/shell-gate.mjs slides/dist-single/Bento_Slides.bento.html
+      - name: Install isolated browser runtime
+        shell: pwsh
+        run: |
+          npm install --prefix "$env:RUNNER_TEMP/bento-browser" --no-save --no-audit --no-fund playwright@1.62.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node "$env:RUNNER_TEMP/bento-browser/node_modules/playwright/cli.js" install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Browser acceptance
+        shell: pwsh
+        run: |
+          $env:PLAYWRIGHT_MODULE = "$env:RUNNER_TEMP/bento-browser/node_modules/playwright/index.mjs"
+          $env:BENTO_SCREENSHOTS = "$env:RUNNER_TEMP/highcharts-screenshots"
+          node slides/tests/highcharts-browser.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: highcharts-${{ matrix.os }}
+          path: ${{ runner.temp }}/highcharts-screenshots
+          if-no-files-found: ignore

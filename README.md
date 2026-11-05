@@ -22,6 +22,12 @@ from [bento.page](https://bento.page/releases/slides/Bento_Slides.bento.html)
 (~560 KB, no account, no installer). Open it in any modern browser and it *is*
 the editor. Save, and it rewrites itself with your deck inside.
 
+## Highcharts 版（本 Fork）
+
+幻灯片图表现使用 Highcharts，支持原生 JSON、CSV 文件及粘贴 CSV 导入；
+脚本随 HTML 打包，支持离线演示。使用与部署见 [docs/HIGHCHARTS.md](docs/HIGHCHARTS.md)。
+Highcharts 不受本项目 MIT 许可覆盖，按公司已有商业许可使用。
+
 ## Windows Server / Linux 内网 PPTX 导入（本 Fork）
 
 本 Fork 增加可自行部署的导入服务：默认允许 500 MiB 上传、后台串行转换、

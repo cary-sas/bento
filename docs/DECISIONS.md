@@ -12209,3 +12209,16 @@ and can prepare an official portable Node 24 runtime otherwise. Startup uses
 Windows Task Scheduler, not a Node executable registered directly with SCM.
 The common slides build and converter CLI use Node APIs rather than POSIX
 commands. No signing keys, publishing, relay or collaboration behavior changes.
+
+## 2026-11-05 — Fork: replace the slides chart renderer with Highcharts
+
+The fork owner explicitly requested a Highcharts-only edition (no legacy engine
+selector) and confirmed an existing commercial license, superseding the upstream
+v0.9.x no-chart-dependency decision for this fork's slides app. Highcharts 13.1.1
+and selected modules are bundled in the single-file shell. The shared kernel
+chart engine remains for other apps but is unreachable from slides' runtime.
+Older option data can migrate in one direction; there is no old rendering path.
+Native JSON and local UTF-8 CSV are the input formats; callbacks, fetching
+options and remote export endpoints stay disabled. Native Highcharts PPTX
+exports use an explicit complete-point data-table fallback. The fork has its
+own app identity so ordinary upstream signed updates cannot remove its renderer.

@@ -3,6 +3,8 @@
 // The bento/slides document model. This JSON is what lives inside the
 // <script type="application/bento+json"> block of a .bento.html file.
 
+import { normalizeChartOptions } from './highcharts-options'
+
 export const FORMAT = 'bento/slides'
 export const FORMAT_VERSION = 1
 
@@ -305,10 +307,10 @@ export interface SvgElement extends ElementBase {
 }
 
 /**
- * Data chart rendered by ECharts. `option` is a PURE-JSON ECharts option
+ * Data chart rendered by Highcharts. `option` is a PURE-JSON Highcharts option
  * (template-string formatters only — never functions): static SVG snapshots
  * on the editor canvas/thumbnails/print, a live interactive instance
- * (tooltips, dataZoom) while presenting.
+ * (tooltips, zoom) while presenting.
  */
 export interface ChartElement extends ElementBase {
   type: 'chart'
@@ -873,13 +875,15 @@ export function tableChartColumns(table: TableElement): { labels: string[]; cols
  */
 export function syncLinkedChart(chart: ChartElement, table: TableElement): boolean {
   const before = JSON.stringify(chart.option)
+  chart.option = normalizeChartOptions(chart.option)
   const { labels, cols } = tableChartColumns(table)
   const opt = chart.option as { xAxis?: any; series?: any }
-  if (opt.xAxis && !Array.isArray(opt.xAxis) && typeof opt.xAxis === 'object') opt.xAxis.data = labels
+  const xAxis = Array.isArray(opt.xAxis) ? opt.xAxis[0] : opt.xAxis
+  if (xAxis && typeof xAxis === 'object') xAxis.categories = labels
   const series: any[] = Array.isArray(opt.series) ? opt.series : opt.series ? [opt.series] : []
   series.forEach((s, i) => {
     if (!s || !cols[i]) return
-    if (s.type === 'pie') s.data = labels.map((name, j) => ({ name, value: cols[i].data[j] ?? 0 }))
+    if (s.type === 'pie') s.data = labels.map((name, j) => ({ name, y: cols[i].data[j] ?? 0 }))
     else s.data = cols[i].data
   })
   return JSON.stringify(chart.option) !== before
@@ -891,8 +895,8 @@ export function chartColorsFor(theme: BentoDoc['theme']): string[] {
 
 /** Give a chart option the deck's palette unless it already sets explicit colours. */
 export function applyChartPalette<T extends Record<string, unknown>>(option: T, theme: BentoDoc['theme']): T {
-  const cur = (option as { color?: unknown }).color
-  if (!Array.isArray(cur) || cur.length === 0) (option as { color?: string[] }).color = chartColorsFor(theme)
+  const cur = (option as { colors?: unknown }).colors
+  if (!Array.isArray(cur) || cur.length === 0) (option as { colors?: string[] }).colors = chartColorsFor(theme)
   return option
 }
 
@@ -902,8 +906,8 @@ export function defaultChart(option: Record<string, unknown>, partial: Partial<C
     type: 'chart',
     x: 400, y: 190, w: 800, h: 520,
     rotation: 0, opacity: 1,
-    preset: 'bar',
-    option,
+    preset: 'column',
+    option: normalizeChartOptions(option),
     ...partial,
   }
 }

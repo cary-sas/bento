@@ -44,8 +44,8 @@ import { onlineTransport, startSharing, stopSharing, disconnectOnline, joinFromD
 // Tell the kernel who this app is — must precede any kernel module use
 // (window title suffix, save-picker label, update manifest + its `app` check).
 configureApp({
-  appId: 'bento-slides',
-  appName: 'bento/slides',
+  appId: 'bento-slides-highcharts',
+  appName: 'bento/slides · Highcharts',
   manifestUrl: 'https://bento.page/releases/slides/manifest.json',
 })
 

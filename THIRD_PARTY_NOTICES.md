@@ -2,11 +2,20 @@
 
 bento/slides is MIT-licensed (© 2026 The Bento authors; see `LICENSE`).
 The shippable single-file shell (`Bento_Slides.bento.html`) bundles the
-following third-party open-source components. Their license terms require that
+following third-party components. Their license terms require that
 these notices accompany copies, so the same text is embedded as a `NOTICE`
 comment near the top of every built shell and every saved Bento document.
 
 ## Bundled runtime (ships inside the shell)
+
+### Highcharts (this fork)
+- Version: 13.1.1, pinned in slides/package-lock.json.
+- Copyright (c) 2009-2026 Highsoft AS.
+- License: Highsoft license terms, https://www.highcharts.com/license.
+- This dependency is **not MIT-licensed**. The fork owner's organization has a
+  commercial license; deployment and distribution must follow that agreement.
+- Core, highcharts-more, xrange, exporting and accessibility are bundled in
+  the single HTML shell. No CDN or external export service is needed.
 
 ### reveal.js
 - License: MIT

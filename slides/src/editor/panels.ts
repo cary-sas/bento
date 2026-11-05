@@ -12,7 +12,9 @@ import { cssColor, resolveAsset } from '../render'
 import { measureElement } from '../measure'
 import { PALETTE_SLOTS, paletteOf, refAt, setColor, slotIsSet } from '../palette'
 import { isMacOS } from '../screens'
-import { CHART_PRESETS } from '../charts'
+import { HIGHCHARTS_PRESETS } from '../charts'
+import { toHighcharts, normalizeChartOptions } from '../highcharts-options'
+import { csvToHighcharts, type CsvSettings } from '../chart-csv'
 import { FONT_CHOICES, firstFamily, injectFonts } from '../fonts'
 import { fontFaceDescriptors } from '../fontmeta'
 import { CODE_SCOPES, DEFAULT_CODE_COLORS } from '../code'
@@ -1417,7 +1419,7 @@ export class PropsPanel {
 
   /** Edit the live chart option in place; final=false while typing. */
   private editOption(id: string, fn: (o: Record<string, any>) => void, final = true) {
-    this.mutate(id, (e) => { fn((e as ChartElement).option as Record<string, any>) }, final)
+    this.mutate(id, (e) => { const c = e as ChartElement; c.option = normalizeChartOptions(c.option); fn(c.option) }, final)
   }
 
   /** Native <select> with distinct value/label pairs (for model-word values). */
@@ -1434,277 +1436,97 @@ export class PropsPanel {
   }
 
   private buildChartProps(el: ChartElement) {
-    const opt = el.option as Record<string, any>
-    const series: any[] = Array.isArray(opt.series) ? opt.series : opt.series ? [opt.series] : []
-    const isPie = series.some((s) => s?.type === 'pie')
-    const isScatter = series.some((s) => s?.type === 'scatter')
-
     this.section(t('Chart'))
-    // live table binding banner (if this chart tracks a table)
-    if (el.source?.tableId) {
-      const linkRow = document.createElement('div')
-      linkRow.className = 'ed-chart-link'
-      const label = document.createElement('span')
-      const stillThere = this.store.slide.elements.some((e) => e.id === el.source!.tableId && e.type === 'table')
-      label.textContent = stillThere ? t('🔗 Live-linked to a table') : t('🔗 Linked table not on this slide')
-      const unlink = document.createElement('button')
-      unlink.className = 'ed-btn'
-      unlink.textContent = t('Unlink')
-      unlink.title = t('Stop tracking the table; the chart keeps its current data')
-      unlink.addEventListener('click', () => this.mutate(el.id, (e) => { delete (e as ChartElement).source }, true))
-      linkRow.append(label, unlink)
-      this.host.appendChild(linkRow)
-    }
-    this.row('Type', this.select(Object.keys(CHART_PRESETS), el.preset ?? 'bar', (v) =>
+    const opt = normalizeChartOptions(el.option)
+    const renderer = document.createElement('span'); renderer.textContent = 'Highcharts'
+    this.row('Renderer', renderer)
+    this.row('Type', this.select(Object.keys(HIGHCHARTS_PRESETS), el.preset ?? opt.chart?.type ?? 'column', (v) =>
       this.mutate(el.id, (e) => {
         const c = e as ChartElement
         c.preset = v
-        c.option = applyChartPalette(CHART_PRESETS[v](), this.store.doc.theme)
+        c.option = { ...HIGHCHARTS_PRESETS[v](), colors: opt.colors }
       }, true)))
-
-    if (!isPie && !isScatter) this.buildChartCartesian(el, opt, series)
-    else if (isPie) this.buildChartPie(el, series)
-
-    // The escape hatch: the full option as JSON, for anything the UI omits.
+    this.row('Legend', this.toggle(opt.legend?.enabled !== false, (on) =>
+      this.editOption(el.id, (o) => { o.legend = { ...o.legend, enabled: on } })))
+    const title = document.createElement('input')
+    title.type = 'text'; title.value = opt.title?.text ?? ''
+    title.addEventListener('change', () => this.editOption(el.id, (o) => { o.title = { ...o.title, text: title.value || null } }))
+    this.row('Title', title)
+    if (el.source) {
+      this.row('Data', this.opBtn('🔗', t('Unlink'), () => this.mutate(el.id, (e) => { delete (e as ChartElement).source }, true)))
+    }
+    this.section(t('Series'))
+    const series = Array.isArray(opt.series) ? opt.series : []
+    series.forEach((s: any, i: number) => {
+      const name = document.createElement('input')
+      name.type = 'text'; name.value = s.name ?? ''; name.placeholder = t('Series {n}', { n: i + 1 })
+      name.addEventListener('change', () => this.editOption(el.id, (o) => { o.series[i].name = name.value }))
+      const row = document.createElement('div'); row.className = 'ed-series-row'
+      row.append(name, this.color(s.color ?? opt.colors?.[i] ?? '#5470c6', (v, final) =>
+        this.editOption(el.id, (o) => { o.series[i].color = v }, final)))
+      row.append(this.opBtn('✕', t('Remove'), () => this.editOption(el.id, (o) => { o.series.splice(i, 1) })))
+      this.row(t('Series {n}', { n: i + 1 }), row)
+    })
+    this.buildChartCsv(el, opt)
     this.section(t('Advanced (JSON)'))
-    const hint = document.createElement('p')
-    hint.className = 'ed-hint'
-    hint.innerHTML = t('The full <b>chart option</b> as JSON (pure data — use template-string formatters like <code>{b}: {c}</code>, never functions). Tooltips and zoom run while presenting.')
-    this.host.appendChild(hint)
+    const hint = document.createElement('p'); hint.className = 'ed-hint'
+    hint.textContent = t('Native Highcharts options as JSON. Use format strings such as {point.y}; functions and external resources are disabled. Type presets replace the current configuration.')
+    this.host.append(hint)
     const ta = document.createElement('textarea')
-    ta.className = 'ed-chart-json'
-    ta.rows = 12
-    ta.spellcheck = false
+    ta.className = 'ed-chart-json'; ta.rows = 18; ta.spellcheck = false
     ta.value = JSON.stringify(el.option, null, 2)
     ta.addEventListener('change', () => {
       try {
         const parsed = JSON.parse(ta.value)
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('object required')
         ta.classList.remove('ed-invalid')
         this.mutate(el.id, (e) => { (e as ChartElement).option = parsed }, true)
       } catch { ta.classList.add('ed-invalid') }
     })
-    this.host.appendChild(ta)
+    this.host.append(ta)
   }
 
-  private static seriesColor(s: any, palette: string[] | undefined, i: number): string {
-    const c = s?.type === 'line' ? s?.lineStyle?.color : s?.itemStyle?.color
-    if (typeof c === 'string') return c
-    const p = palette && palette.length ? palette : ['#5470c6', '#91cc75', '#fac858', '#ee6666']
-    return p[i % p.length]
-  }
-
-  private static setSeriesColor(s: any, v: string) {
-    if (s?.type === 'line') s.lineStyle = { ...(s.lineStyle ?? {}), color: v }
-    else s.itemStyle = { ...(s.itemStyle ?? {}), color: v }
-  }
-
-  private buildChartCartesian(el: ChartElement, opt: Record<string, any>, series: any[]) {
-    const yAxis: any[] = Array.isArray(opt.yAxis) ? opt.yAxis : opt.yAxis ? [opt.yAxis] : [{ type: 'value' }]
-    const twoAxes = yAxis.length > 1
-
-    this.row('Legend', this.toggle(!!opt.legend, (on) =>
-      this.editOption(el.id, (o) => { if (on) o.legend = { bottom: 0 }; else delete o.legend })))
-
-    this.row('Second axis', this.toggle(twoAxes, (on) => this.editOption(el.id, (o) => {
-      const ss: any[] = Array.isArray(o.series) ? o.series : o.series ? [o.series] : []
-      if (on) {
-        const first = Array.isArray(o.yAxis) ? (o.yAxis[0] ?? {}) : (o.yAxis ?? {})
-        o.yAxis = [{ type: 'value', ...first }, { type: 'value', name: t('Axis {n}', { n: 2 }) }]
-        ss.forEach((s, i) => { if (s) s.yAxisIndex = i === 0 ? 0 : 1 })
-      } else {
-        o.yAxis = { type: 'value', ...(Array.isArray(o.yAxis) ? o.yAxis[0] : o.yAxis) }
-        ss.forEach((s) => { if (s) delete s.yAxisIndex })
-      }
-    })))
-
-    // --- series list --------------------------------------------------------
-    this.section(t('Series'))
-    const palette: string[] | undefined = Array.isArray(opt.color) ? opt.color : undefined
-    series.forEach((s, i) => {
-      const row = document.createElement('div')
-      row.className = 'ed-series-row'
-      const name = document.createElement('input')
-      name.type = 'text'; name.className = 'ed-series-name'; name.value = s?.name ?? ''
-      name.placeholder = t('Series {n}', { n: i + 1 })
-      name.addEventListener('input', () => this.editOption(el.id, (o) => { o.series[i].name = name.value }, false))
-      name.addEventListener('change', () => this.editOption(el.id, (o) => { o.series[i].name = name.value }, true))
-      const type = this.labeledSelect([['bar', t('Bar')], ['line', t('Line')]], s?.type === 'line' ? 'line' : 'bar',
-        (v) => this.editOption(el.id, (o) => { o.series[i].type = v }))
-      row.append(name, type)
-      if (twoAxes) {
-        row.append(this.labeledSelect([['0', t('Left')], ['1', t('Right')]], String(Math.round(s?.yAxisIndex ?? 0)),
-          (v) => this.editOption(el.id, (o) => { o.series[i].yAxisIndex = parseInt(v) })))
-      }
-      row.append(this.color(PropsPanel.seriesColor(s, palette, i), (v, final) =>
-        this.editOption(el.id, (o) => PropsPanel.setSeriesColor(o.series[i], v), final)))
-      const rm = this.opBtn('✕', t('Remove'), () => this.editOption(el.id, (o) => {
-        o.series.splice(i, 1)
-        if (o.series.length <= 1) { o.series.forEach((x: any) => x && delete x.yAxisIndex); if (Array.isArray(o.yAxis)) o.yAxis = o.yAxis[0] ?? { type: 'value' } }
-      }))
-      rm.classList.add('ed-series-rm')
-      row.append(rm)
-      this.host.appendChild(row)
+  private buildChartCsv(el: ChartElement, opt: Record<string, any>) {
+    this.section(t('Import CSV'))
+    const file = document.createElement('input')
+    file.type = 'file'; file.accept = '.csv,.tsv,text/csv,text/tab-separated-values'
+    file.setAttribute('aria-label', t('CSV file'))
+    const csv = document.createElement('textarea')
+    csv.className = 'ed-chart-csv'; csv.rows = 6; csv.spellcheck = false
+    csv.placeholder = t('Category,Series A,Series B')
+    csv.setAttribute('aria-label', t('CSV data'))
+    const header = this.toggle(true, () => {})
+    const first = this.labeledSelect([['category', t('First column: categories')], ['xy', t('First column: numeric X')]],
+      opt.chart?.type === 'scatter' ? 'xy' : 'category', () => {})
+    first.setAttribute('aria-label', t('CSV interpretation'))
+    const delimiter = this.labeledSelect([['auto', t('Auto detect')], [',', t('Comma')], [';', t('Semicolon')], ['\t', t('Tab')]], 'auto', () => {})
+    delimiter.setAttribute('aria-label', t('CSV delimiter'))
+    const status = document.createElement('p'); status.className = 'ed-hint'; status.setAttribute('role', 'status')
+    file.addEventListener('change', async () => {
+      const f = file.files?.[0]
+      if (!f) return
+      if (f.size > 2 * 1024 * 1024) { status.textContent = t('CSV exceeds 2 MiB'); return }
+      try {
+        const bytes = await f.arrayBuffer()
+        csv.value = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+        status.textContent = t('CSV loaded. Review the settings, then apply.')
+      } catch { status.textContent = t('Cannot read CSV. Save it as UTF-8 CSV and try again.') }
     })
-    const addRow = document.createElement('div')
-    addRow.className = 'ed-chart-add'
-    const addBtn = document.createElement('button')
-    addBtn.className = 'ed-btn'
-    addBtn.textContent = t('＋ Add series')
-    addBtn.addEventListener('click', () => this.editOption(el.id, (o) => {
-      const ss: any[] = Array.isArray(o.series) ? o.series : o.series ? [o.series] : []
-      const n = (o.xAxis?.data?.length) || 4
-      ss.push({ type: 'bar', name: t('Series {n}', { n: ss.length + 1 }), data: Array(n).fill(0) })
-      o.series = ss
-    }))
-    addRow.appendChild(addBtn)
-    this.host.appendChild(addRow)
-
-    // --- per-axis min/max ---------------------------------------------------
-    yAxis.forEach((ax, ai) => {
-      const label = twoAxes ? (ai === 0 ? t('Left axis') : t('Right axis')) : t('Y axis')
-      const wrap = document.createElement('div')
-      wrap.className = 'ed-axis-range'
-      const mk = (key: 'min' | 'max', ph: string) => {
-        const inp = document.createElement('input')
-        inp.type = 'number'; inp.placeholder = ph
-        inp.value = typeof ax?.[key] === 'number' ? String(ax[key]) : ''
-        const commit = (final: boolean) => this.editOption(el.id, (o) => {
-          const a = Array.isArray(o.yAxis) ? o.yAxis[ai] : o.yAxis
-          const raw = inp.value.trim()
-          if (raw === '' || Number.isNaN(parseFloat(raw))) delete a[key]
-          else a[key] = parseFloat(raw)
-        }, final)
-        inp.addEventListener('input', () => commit(false))
-        inp.addEventListener('change', () => commit(true))
-        return inp
-      }
-      wrap.append(mk('min', t('min')), mk('max', t('max')))
-      this.row(label, wrap)
+    const apply = this.opBtn('↓', t('Apply CSV data'), () => {
+      try {
+        const parsed = csvToHighcharts(opt, csv.value, {
+          header: header instanceof HTMLInputElement ? header.checked : true,
+          mode: first.value as CsvSettings['mode'],
+          delimiter: delimiter.value === 'auto' ? undefined : delimiter.value as CsvSettings['delimiter'],
+        })
+        this.mutate(el.id, (e) => { const c = e as ChartElement; c.option = parsed; delete c.source }, true)
+        this.toast(t('CSV data applied'))
+      } catch (error) { status.textContent = error instanceof Error ? error.message : String(error) }
     })
-
-    // --- data grid ----------------------------------------------------------
-    this.buildChartGrid(el, opt, series)
-  }
-
-  /** Editable categories × series grid. Adding/removing rows keeps every
-   *  series data array and the x-axis categories in lockstep. */
-  private buildChartGrid(el: ChartElement, opt: Record<string, any>, series: any[]) {
-    const cats: any[] = opt.xAxis?.data ?? []
-    this.section(t('Data'))
-    const scroll = document.createElement('div')
-    scroll.className = 'ed-chart-grid-wrap'
-    const table = document.createElement('table')
-    table.className = 'ed-chart-grid'
-    const thead = document.createElement('tr')
-    const corner = document.createElement('th'); corner.textContent = ''
-    thead.appendChild(corner)
-    series.forEach((s, i) => {
-      const th = document.createElement('th')
-      th.textContent = s?.name || t('Series {n}', { n: i + 1 })
-      thead.appendChild(th)
-    })
-    thead.appendChild(document.createElement('th'))
-    table.appendChild(thead)
-
-    const cellInput = (value: string, onCommit: (v: string, final: boolean) => void, numeric: boolean) => {
-      const inp = document.createElement('input')
-      inp.type = numeric ? 'number' : 'text'
-      inp.value = value
-      inp.addEventListener('input', () => onCommit(inp.value, false))
-      inp.addEventListener('change', () => onCommit(inp.value, true))
-      return inp
-    }
-
-    const rowCount = Math.max(cats.length, ...series.map((s) => (s?.data?.length ?? 0)))
-    for (let r = 0; r < rowCount; r++) {
-      const tr = document.createElement('tr')
-      const cat = document.createElement('td')
-      cat.appendChild(cellInput(String(cats[r] ?? ''), (v, final) => this.editOption(el.id, (o) => {
-        if (!Array.isArray(o.xAxis?.data)) { o.xAxis = { ...(o.xAxis ?? { type: 'category' }), data: [] } }
-        o.xAxis.data[r] = v
-      }, final), false))
-      tr.appendChild(cat)
-      series.forEach((s, i) => {
-        const td = document.createElement('td')
-        td.appendChild(cellInput(String(s?.data?.[r] ?? ''), (v, final) => this.editOption(el.id, (o) => {
-          const arr = o.series[i].data ?? (o.series[i].data = [])
-          const n = parseFloat(v)
-          arr[r] = Number.isNaN(n) ? 0 : n
-        }, final), true))
-        tr.appendChild(td)
-      })
-      const rmTd = document.createElement('td')
-      rmTd.appendChild(this.opBtn('✕', t('Remove row'), () => this.editOption(el.id, (o) => {
-        if (Array.isArray(o.xAxis?.data)) o.xAxis.data.splice(r, 1)
-        o.series.forEach((s: any) => { if (Array.isArray(s?.data)) s.data.splice(r, 1) })
-      })))
-      tr.appendChild(rmTd)
-      table.appendChild(tr)
-    }
-    scroll.appendChild(table)
-    this.host.appendChild(scroll)
-
-    const addRow = document.createElement('div')
-    addRow.className = 'ed-chart-add'
-    const addBtn = document.createElement('button')
-    addBtn.className = 'ed-btn'
-    addBtn.textContent = t('＋ Add row')
-    addBtn.addEventListener('click', () => this.editOption(el.id, (o) => {
-      if (!Array.isArray(o.xAxis?.data)) o.xAxis = { ...(o.xAxis ?? { type: 'category' }), data: [] }
-      o.xAxis.data.push(t('Item {n}', { n: o.xAxis.data.length + 1 }))
-      const ss: any[] = Array.isArray(o.series) ? o.series : [o.series]
-      ss.forEach((s) => { if (s) (s.data ?? (s.data = [])).push(0) })
-    }))
-    addRow.appendChild(addBtn)
-    this.host.appendChild(addRow)
-  }
-
-  /** Pie: one row per slice (name · value · colour · remove) + add. */
-  private buildChartPie(el: ChartElement, series: any[]) {
-    const s = series.find((x) => x?.type === 'pie') ?? series[0]
-    const data: any[] = s?.data ?? []
-    const palette: string[] | undefined = Array.isArray((el.option as any).color) ? (el.option as any).color : undefined
-    this.section(t('Slices'))
-    data.forEach((d, i) => {
-      const row = document.createElement('div')
-      row.className = 'ed-series-row'
-      const name = document.createElement('input')
-      name.type = 'text'; name.className = 'ed-series-name'; name.value = d?.name ?? ''
-      name.addEventListener('input', () => this.editPieDatum(el.id, i, (x) => { x.name = name.value }, false))
-      name.addEventListener('change', () => this.editPieDatum(el.id, i, (x) => { x.name = name.value }, true))
-      const val = document.createElement('input')
-      val.type = 'number'; val.className = 'ed-pie-val'; val.value = String(d?.value ?? 0)
-      const commitVal = (final: boolean) => this.editPieDatum(el.id, i, (x) => { const n = parseFloat(val.value); x.value = Number.isNaN(n) ? 0 : n }, final)
-      val.addEventListener('input', () => commitVal(false))
-      val.addEventListener('change', () => commitVal(true))
-      const swatch = this.color((palette && palette[i]) || PropsPanel.seriesColor({ type: 'pie' }, palette, i), (v, final) =>
-        this.editOption(el.id, (o) => { if (!Array.isArray(o.color)) o.color = []; o.color[i] = v }, final))
-      const rm = this.opBtn('✕', t('Remove'), () => this.editPieDatum(el.id, i, null, true))
-      rm.classList.add('ed-series-rm')
-      row.append(name, val, swatch, rm)
-      this.host.appendChild(row)
-    })
-    const addRow = document.createElement('div')
-    addRow.className = 'ed-chart-add'
-    const addBtn = document.createElement('button')
-    addBtn.className = 'ed-btn'
-    addBtn.textContent = t('＋ Add slice')
-    addBtn.addEventListener('click', () => this.editOption(el.id, (o) => {
-      const ps = (Array.isArray(o.series) ? o.series : [o.series]).find((x: any) => x?.type === 'pie') ?? o.series[0]
-      ps.data = ps.data ?? []
-      ps.data.push({ name: t('Item {n}', { n: ps.data.length + 1 }), value: 0 })
-    }))
-    addRow.appendChild(addBtn)
-    this.host.appendChild(addRow)
-  }
-
-  private editPieDatum(id: string, i: number, fn: ((d: any) => void) | null, final: boolean) {
-    this.editOption(id, (o) => {
-      const ps = (Array.isArray(o.series) ? o.series : [o.series]).find((x: any) => x?.type === 'pie') ?? o.series[0]
-      if (!ps?.data) return
-      if (fn === null) ps.data.splice(i, 1)
-      else fn(ps.data[i])
-    }, final)
+    this.host.append(file, csv)
+    this.row('First row contains headers', header)
+    apply.classList.remove('ed-btn-icon'); apply.textContent = t('Apply CSV data')
+    this.host.append(first, delimiter, apply, status)
   }
 
   private buildTableProps(el: TableElement) {
@@ -1852,8 +1674,8 @@ export class PropsPanel {
       if (cols.length > 1) option.legend = { bottom: 0 }
     }
     applyChartPalette(option, this.store.doc.theme)
-    const chart = defaultChart(option, {
-      x: el.x, y: Math.min(el.y + el.h + 24, 480), w: Math.max(el.w, 640), h: 300, preset: 'bar',
+    const chart = defaultChart(toHighcharts(option), {
+      x: el.x, y: Math.min(el.y + el.h + 24, 480), w: Math.max(el.w, 640), h: 300, preset: 'column',
       // live binding: edits to the table flow into this chart
       source: { tableId: el.id },
     })
