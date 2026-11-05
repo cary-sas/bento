@@ -12194,3 +12194,18 @@ Two follow-ups to the link v1 entry above, both from porting it to iOS.
   their base64url text. Before this, iOS had to
   choose an encoding that no spec pinned, and two hosts choosing differently
   would never link. The `link.wire` rows are byte for byte both ways.
+
+## 2026-11-05 — Fork: an optional Windows/Linux intranet import host
+
+At the fork owner's request, `server/import/` adds a separate Node HTTP host,
+streaming uploads to private disk and serializing conversions in disposable
+processes. The generated single-file document and its format are unchanged;
+the host always uses a local shell. The public browser converter keeps its
+100 MiB default, while explicit API/CLI byte-limit overrides let the host
+attempt larger inputs without dropping ZIP ratio, entry or inflate safeguards.
+Document asset and page ceilings remain intact, with host errors rather than
+silent pruning at those limits. Windows scripts use existing Node when suitable
+and can prepare an official portable Node 24 runtime otherwise. Startup uses
+Windows Task Scheduler, not a Node executable registered directly with SCM.
+The common slides build and converter CLI use Node APIs rather than POSIX
+commands. No signing keys, publishing, relay or collaboration behavior changes.

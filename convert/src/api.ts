@@ -6,12 +6,12 @@
 
 import { convertPptx } from './pptx.ts'
 import { gateDoc, spliceIntoShell } from './deliver.ts'
-import { preflight } from './limits.ts'
+import { preflight, type ImportLimits } from './limits.ts'
 import type { FidelityReport } from './report.ts'
 import type { Dropped } from '../../slides/src/untrusted.ts'
 
 export { fetchVerifiedShell, SLIDES_MANIFEST, MIN_SHELL_VERSION } from './deliver.ts'
-export { LIMITS, LimitError } from './limits.ts'
+export { LIMITS, LimitError, type ImportLimits } from './limits.ts'
 
 export interface ImportResult {
   html: string
@@ -25,8 +25,8 @@ export interface ImportResult {
 }
 
 /** .pptx bytes + a verified shell → a .bento.html. */
-export async function pptxToBento(pptx: Uint8Array, shellHtml: string): Promise<ImportResult> {
-  preflight(pptx)
+export async function pptxToBento(pptx: Uint8Array, shellHtml: string, limits: ImportLimits = {}): Promise<ImportResult> {
+  preflight(pptx, limits)
   const { doc, report } = await convertPptx(pptx)
   const { doc: safe, dropped } = gateDoc(doc)
   return {

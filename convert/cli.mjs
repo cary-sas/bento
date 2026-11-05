@@ -37,7 +37,7 @@
 // this bundles its entry with the repo's esbuild on each run and imports the
 // result. No new dependency; slides/node_modules must be installed.
 
-import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -56,7 +56,8 @@ process.on('warning', (w) => {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const USAGE = `usage:
   bento convert <deck.pptx> [-o out.bento.html] [--shell path | --offline] [--report r.json]
-  bento convert <deck.bento.html|doc.json> --to pptx [-o out.pptx] [--no-states] [--report r.json]`
+  bento convert <deck.bento.html|doc.json> --to pptx [-o out.pptx] [--no-states] [--report r.json]
+  import limits: --max-input-mb N --max-uncompressed-mb N`
 
 function die(msg, code = 1) {
   process.stderr.write(`bento convert: ${msg}\n`)
@@ -66,13 +67,18 @@ function die(msg, code = 1) {
 // --- arguments ---------------------------------------------------------------
 const argv = process.argv.slice(2)
 if (argv[0] === 'convert') argv.shift()
-const opts = { out: null, to: null, shell: null, offline: false, input: null, report: null, states: true }
+const opts = { out: null, to: null, shell: null, offline: false, input: null, report: null, states: true, limits: {} }
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i]
   const val = () => (i + 1 < argv.length ? argv[++i] : die(`${a} needs a value\n${USAGE}`, 2))
   if (a === '-o' || a === '--out') opts.out = val()
   else if (a === '--to') opts.to = val()
   else if (a === '--report') opts.report = val()
+  else if (a === '--max-input-mb' || a === '--max-uncompressed-mb') {
+    const n = Number(val())
+    if (!Number.isInteger(n) || n < 1 || n > 4096) die(`${a} must be an integer from 1 to 4096`, 2)
+    opts.limits[a === '--max-input-mb' ? 'inputBytes' : 'totalUncompressed'] = n * 1024 * 1024
+  }
   else if (a === '--no-states') opts.states = false
   // --states was the opt-in before states became the default; kept so
   // existing scripts still run, and does nothing now
@@ -95,15 +101,19 @@ if (!exporting && opts.offline && !opts.shell) die('--offline needs --shell: the
 if (!fs.existsSync(opts.input)) die(`no such file: ${opts.input}`)
 
 // --- the engine, bundled -----------------------------------------------------
-const esbuild = path.join(root, 'slides/node_modules/.bin/esbuild')
-if (!fs.existsSync(esbuild)) die('slides/node_modules is missing — run `cd slides && npm install`')
+const require = createRequire(path.join(root, 'slides/package.json'))
+let buildSync
+try { ({ buildSync } = require('esbuild')) }
+catch { die('slides/node_modules is missing — run `cd slides && npm install`') }
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bento-convert-'))
 const bundle = path.join(tmp, 'api.mjs')
-const built = spawnSync(esbuild, [
-  path.join(root, 'convert/src/index.ts'), '--bundle', '--format=esm', '--platform=node',
-  '--log-level=error', `--outfile=${bundle}`,
-], { encoding: 'utf8' })
-if (built.status !== 0) die(`could not build the engine:\n${built.stderr}`)
+try {
+  buildSync({ entryPoints: [path.join(root, 'convert/src/index.ts')], bundle: true,
+    format: 'esm', platform: 'node', logLevel: 'silent', outfile: bundle })
+} catch (err) {
+  fs.rmSync(tmp, { recursive: true, force: true })
+  die(`could not build the engine: ${err.message}`)
+}
 const api = await import(pathToFileURL(bundle).href)
 
 // The engine reports only what it could NOT carry as-is, so "0 carried" would
@@ -136,7 +146,7 @@ try {
       shell = v.html
       process.stderr.write(`shell: bento/slides ${v.version} — signature and pin verified\n`)
     }
-    const res = await api.pptxToBento(new Uint8Array(fs.readFileSync(opts.input)), shell)
+    const res = await api.pptxToBento(new Uint8Array(fs.readFileSync(opts.input)), shell, opts.limits)
     const out = opts.out ?? opts.input.replace(/\.pptx$/i, '') + '.bento.html'
     fs.writeFileSync(out, res.html)
     printReport(res.report)

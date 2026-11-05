@@ -1,0 +1,66 @@
+name: import server (Windows and Linux)
+on:
+  pull_request:
+    paths: ['server/import/**', 'convert/**', 'slides/**', 'kernel/**', 'scripts/build-slides-single.mjs', 'scripts/postbuild-compress.mjs', '.github/workflows/ci-import-server.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  import-server:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            node: '24'
+          - os: windows-latest
+            node: '26'
+          - os: ubuntu-latest
+            node: '24'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: slides/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: slides
+      - run: npm run build:single
+        working-directory: slides
+      - name: Typecheck converter and worker
+        run: |
+          node slides/node_modules/typescript/bin/tsc -p convert
+          node slides/node_modules/typescript/bin/tsc --noEmit --target ES2022 --module esnext --moduleResolution bundler --allowImportingTsExtensions --skipLibCheck --strict --types node --typeRoots slides/node_modules/@types server/import/worker.ts
+      - name: Server integration tests (includes input over 100 MiB)
+        run: node --test server/import/server.test.mjs
+      - name: Check PowerShell scripts
+        shell: pwsh
+        run: |
+          Get-ChildItem server/import/*.ps1 | ForEach-Object {
+            $tokens = $null; $parseErrors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors) | Out-Null
+            if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          }
+      - name: Install isolated browser test tools
+        shell: pwsh
+        run: |
+          npm install --prefix "$env:RUNNER_TEMP/bento-browser" --no-save --no-audit --no-fund playwright@1.62.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node "$env:RUNNER_TEMP/bento-browser/node_modules/playwright/cli.js" install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Browser acceptance test
+        shell: pwsh
+        run: |
+          $env:PLAYWRIGHT_MODULE = "$env:RUNNER_TEMP/bento-browser/node_modules/playwright/index.mjs"
+          $env:BENTO_SCREENSHOTS = "$env:RUNNER_TEMP/bento-screenshots"
+          node server/import/browser.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: import-server-screenshots-${{ matrix.os }}-node${{ matrix.node }}
+          path: ${{ runner.temp }}/bento-screenshots
+          if-no-files-found: ignore
