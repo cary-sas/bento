@@ -43,7 +43,23 @@ assert.match(combo.chart,/<c:lineChart>/)
 assert.equal(((combo.doc.slides[0].elements[0] as OutChart).option as any).series[1].yAxis,1)
 const pie = await roundtrip({chart:{type:'pie'},plotOptions:{pie:{innerSize:'40%'}},series:[{data:[['A',1],['B',2]]}]})
 assert.match(pie.chart,/<c:holeSize val="40"/)
+for (const type of ['column','bar']) {
+  const r = await roundtrip({chart:{type},xAxis:{categories:['A','B','C','D']},series:[
+    {name:'Colors',color:'#123456',data:[{y:12,color:'#f00'},null,{y:-4.25,color:'#00aa88'},5]},
+    {name:'Other',data:[1,{y:null,color:'#abc'},3,4]},
+  ]})
+  assert.ok(r.parts.has('ppt/charts/chart1.xml'),`${type} point colors remain native`)
+  const series = ((r.doc.slides[0].elements[0] as OutChart).option as any).series
+  assert.deepEqual(series[0].data,[{y:12,color:'#FF0000'},null,{y:-4.25,color:'#00AA88'},5])
+  assert.deepEqual(series[1].data,[1,{y:null,color:'#AABBCC'},3,4])
+  assert.equal(series[0].color,'#123456')
+  assert.equal((r.chart.match(/<c:dPt>/g) ?? []).length,3)
+  assert.doesNotMatch(r.chart,/<c:pt idx="1"><c:v>0<\/c:v>/)
+}
 for(const option of [
+  {chart:{type:'column'},series:[{data:[{y:2,color:'transparent'}]}]},
+  {chart:{type:'line'},series:[{data:[{y:2,color:'#ff0000'}]}]},
+
   {chart:{type:'waterfall'},series:[{data:[{y:2},{isSum:true}]}]},
   {chart:{type:'column'},series:[{stacking:'normal',data:[1,2]}]},
   {chart:{type:'xrange'},series:[{data:[{x:1,x2:5,y:0}]}]},

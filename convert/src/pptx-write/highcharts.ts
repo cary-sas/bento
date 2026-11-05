@@ -62,12 +62,13 @@ export function nativeChartOptions(input: Record<string, unknown>): Dict | undef
       } else if (type === 'pie') {
         data.push({name:String(name ?? categories?.[i] ?? i),value:y,...(typeof color === 'string'?{itemStyle:{color}}:{})})
       } else {
-        if (color !== undefined) return undefined // Per-point fills need a dPt mapper.
+        if (color !== undefined && (!['column','bar'].includes(type) ||
+          typeof color !== 'string' || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color))) return undefined
         if (name !== undefined && !categories) {
           if (names.has(i) && names.get(i)!==String(name)) return undefined
           names.set(i,String(name));labels[i]=String(name)
         }
-        data.push(y)
+        data.push(color === undefined ? y : {value:y,itemStyle:{color}})
       }
     }
     if (!xy && type!=='pie') while(data.length<labels.length)data.push(null)
