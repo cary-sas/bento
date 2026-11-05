@@ -58,7 +58,7 @@ company keeps its servers on. Bento takes the other path:
 | **Morph presenting** | Elements that share an id animate between slides — position, size, color, even gradients. Duplicate a slide, rearrange, and the motion designs itself. |
 | **Live collaboration** | E2EE (AES-GCM) with keys that live in your file, never on a server. The file itself is the invitation: anyone who opens a copy joins. Offline edits merge back precisely — our own CRDT, character-level text merging included. |
 | **A blind relay** | The optional sync relay ([`server/sync-worker/`](server/sync-worker/)) stores ciphertext and learns nothing. Read the source; it's about one file. |
-| **Charts, built in** | Bar / line / pie / scatter drawn by our own dependency-free engine, live during presentations: tooltips, zoom, and data that morphs when a bar chart becomes a pie. |
+| **Charts, built in** | Highcharts with native JSON and local CSV import: column, bar, line, area, pie, scatter, waterfall, boxplot and xrange; live tooltips, legends and zoom. |
 | **Designed for AI** | The document is plain JSON in the file, so agents edit `.bento.html` files in place and chatbots round-trip the JSON (`window.bento.loadDoc`). See [docs/agents.md](docs/agents.md). |
 | **Signed self-updates** | Releases are ECDSA-signed and offered in-app. Updating writes a *new* file — the old one stays as your rollback. No server ever touches your documents. |
 | **Everything else** | Speaker view, comments, layouts, hidden interactive states, hover reveals, motion paths, PDF export, page sizes, 8 UI languages — in a ~560 KB shell. |
@@ -88,8 +88,8 @@ this repo at [docs/agents.md](docs/agents.md)).
 `slides/src/model.ts` defines the JSON document model; one renderer
 (`render.ts`) draws it for the editor canvas, thumbnails, and present mode
 (Reveal.js drives navigation; morphs are computed from the model, not the
-DOM). Animation is an in-house engine (`anim.ts`), charts are in-house
-(`charts.ts`), collaboration is an in-house CRDT (`sync/crdt.ts` — pure
+DOM). Animation is an in-house engine (`anim.ts`), charts use Highcharts
+(`slides/src/highcharts.ts`), collaboration is an in-house CRDT (`sync/crdt.ts` — pure
 data, fuzz-tested by `scripts/test-sync.ts` across hundreds of thousands of
 convergence checks). The shell compresses to ~560 KB with the document block
 left as plaintext so old files and outside tools can always splice it. The
@@ -170,8 +170,8 @@ existing file through the signed update channel.
 
 ## License
 
-Bento is open source under the [MIT License](LICENSE) — all software here is
-MIT, © 2026 The Bento authors. Bundled runtime components (reveal.js,
+Bento is open source under the [MIT License](LICENSE) — the adapter and original project code are
+MIT (the bundled Highcharts dependency follows the Highsoft license), © 2026 The Bento authors. Bundled runtime components (reveal.js,
 Moveable, Selecto) are MIT; the embedded typefaces (Fraunces, Instrument Sans)
 are OFL; gallery imagery is public-domain (see
 `scripts/gallery-photos/SOURCES.md`). Each component keeps its own license.

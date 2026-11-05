@@ -69,7 +69,7 @@ try {
   try {
     await p.waitForFunction(()=>[...document.querySelectorAll('.highcharts-tooltip')].some(e=>e.getAttribute('visibility')!=='hidden'),null,{timeout:10000})
   } catch(error) {
-    console.log('Tooltip diagnostic',JSON.stringify(await live.evaluate(el=>({html:el.innerHTML.slice(-3000),rect:el.getBoundingClientRect().toJSON(),attr:el.getAttribute('data-highcharts-chart'),points:[...el.querySelectorAll('.highcharts-point')].map(p=>{const r=p.getBoundingClientRect();return {cls:p.parentElement?.getAttribute('class'),rect:r.toJSON(),hit:document.elementsFromPoint(r.x+r.width/2,r.y+r.height/2).slice(0,3).map(x=>x.getAttribute('class'))}})}))))
+    console.log('Tooltip diagnostic',JSON.stringify(await live.evaluate(el=>({html:el.innerHTML.slice(-1000),chart:[...el.querySelectorAll('.highcharts-series-group .highcharts-point')].slice(0,1).map(p=>{const c=p.point?.series?.chart;return c?{tooltip:c.options.tooltip,position:c.pointer.chartPosition,hover:c.hoverPoint?.y}:null}),rect:el.getBoundingClientRect().toJSON(),attr:el.getAttribute('data-highcharts-chart'),points:[...el.querySelectorAll('.highcharts-point')].map(p=>{const r=p.getBoundingClientRect();return {cls:p.parentElement?.getAttribute('class'),rect:r.toJSON(),hit:document.elementsFromPoint(r.x+r.width/2,r.y+r.height/2).slice(0,3).map(x=>x.getAttribute('class'))}})}))))
     if(process.env.BENTO_SCREENSHOTS) { await fs.mkdir(process.env.BENTO_SCREENSHOTS,{recursive:true}); await p.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'tooltip-failure.png')}) }
     throw error
   }

@@ -84,7 +84,16 @@ export function mountHighcharts(el: ChartLike, host: HTMLElement): () => void {
   host.innerHTML = ''
   try {
     const chart = Highcharts.chart(host, options(el, true))
-    return () => chart.destroy()
+    // Reveal can scale/reposition the parent after mounting. Highcharts caches
+    // the initial chart offset (sometimes while the section is still hidden),
+    // so refresh it before events are normalized into chart coordinates.
+    const invalidatePosition = () => { delete (chart.pointer as unknown as { chartPosition?: unknown }).chartPosition }
+    const events = ['mousemove', 'mousedown', 'touchstart', 'touchmove'] as const
+    for (const event of events) host.addEventListener(event, invalidatePosition, { capture: true, passive: true })
+    return () => {
+      for (const event of events) host.removeEventListener(event, invalidatePosition, true)
+      chart.destroy()
+    }
   } catch {
     host.innerHTML = highchartsSnapshot(el)
     return () => { host.innerHTML = '' }
