@@ -38,6 +38,7 @@ import { scrubC0, serialize, x, type XChild, type XNode } from '../xmlout.ts'
 import { EMU_PER_PX, type OutChart, type OutTable } from '../types.ts'
 import type { Report } from '../report.ts'
 import { tableFrame } from './tables.ts'
+import { normalizeChartOptions, highchartsDataRows } from '../../../slides/src/highcharts-options.ts'
 
 /** The a:graphicData uri that marks a graphicFrame as a chart reference. */
 export const CHART_GRAPHIC_URI = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
@@ -253,6 +254,23 @@ export function chartExport(
   report: Report,
   where: string,
 ): ChartExport {
+  // Native Highcharts options cannot be interpreted as charts-lite options:
+  // exporting them as clustered columns would silently misstate some charts.
+  if (normalizeChartOptions(el.option) === el.option) {
+    report.add('approximated', 'highcharts-as-data-table', where,
+      'Highcharts chart exported as an editable data table with complete point JSON; use PDF or slide images to preserve its appearance')
+    const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const rows = highchartsDataRows(el.option)
+    const table: OutTable = {
+      id: el.id, type: 'table', x: el.x, y: el.y, w: el.w, h: el.h,
+      rotation: el.rotation, opacity: el.opacity, header: true,
+      columns: [{ w: 1 }, { w: 1 }, { w: 3 }],
+      rows: rows.map((row) => ({ cells: row.map((html) => ({ html: escape(html) })) })),
+      style: { headerBg: '#EFF2F5', headerColor: '#1E2A3A', color: '#1E2A3A', borderColor: '#C9CFD6', borderWidth: 1,
+        cellPadX: 10, cellPadY: 6, fontSize: 12, radius: 0 },
+    }
+    return { frame: tableFrame(table, shapeId, report, where) }
+  }
   const option = dict(el.option)
   const series = seriesList(option.series)
   const optColors = Array.isArray(option.color) ? (option.color as unknown[]).map((c) => str(c) ?? '') : []

@@ -2917,3 +2917,6 @@ input.ed-toggle { width: 16px; height: 16px; accent-color: #5E7699; cursor: poin
 }
 .ed-swatch:hover { transform: scale(1.15); }
 .ed-swatch.is-on { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+/* Native Highcharts data editor. */
+.ed-chart-csv{width:100%;min-height:110px;resize:vertical;font:12px/1.5 ui-monospace,monospace;border:1px solid var(--line);border-radius:6px;padding:8px;margin:8px 0;box-sizing:border-box}

@@ -177,27 +177,26 @@ use `svg` for static artwork/geography.
 
 ### `chart`
 
-`type: "chart"` — `option` is a **pure-JSON, ECharts-*shaped*** option object
-(the format is ECharts-compatible; the renderer is the in-house `charts-lite`
-engine, not ECharts). Static SVG snapshots on the editor canvas / thumbnails /
-print; a live interactive instance (tooltips, wheel-zoom, drag-pan) while
-presenting.
+`type: "chart"` — `option` is a **pure-JSON Highcharts option object** in this
+fork. Highcharts is the only slides chart renderer. Static SVG snapshots serve
+the editor, thumbnails, slide-image export and printing; presentation mode
+mounts interactive Highcharts instances (tooltips, legends, drag-to-zoom).
 
-- `preset?`: `bar | line | pie | scatter` — the panel's re-seed key.
-- `source?`: `{ tableId }` — live binding; the chart's labels + series values
-  track that table element (data only; styling/axes preserved).
-
-**Chart rules that bite:**
-
-- Bar/line series `data` must be **plain numbers**. `{value, itemStyle}` item
-  objects coerce to `0`; only **pie** takes `{name, value}`.
-- Color **by series**, not per bar — per-item bar colors are unsupported.
-- Formatters are **template strings only** (`{b}`, `{c}`, `{d}`) — never
-  functions (they can't serialize).
-- **Dual y-axis**: `yAxis` may be an array of two `{type:"value"}` axes; a
-  series selects one via `yAxisIndex: 0|1`. Give the second axis
-  `axisLabel:{formatter:"{value}%"}` for a percentage scale.
-- Unknown option keys degrade gracefully (ignored, never fatal).
+- `preset?`: the panel's Highcharts preset key.
+- `source?`: `{ tableId }` — live table binding updates `xAxis.categories` and
+  series data; pie points use `{name, y}`.
+- Use Highcharts fields such as `chart.type`, `colors`, `xAxis.categories`,
+  `yAxis.title`, `series[].yAxis`, and format strings such as `{point.y}`.
+- JavaScript callbacks, HTML labels, dynamic data loaders, external images,
+  external export endpoints and remote resource URLs are disabled.
+- The panel accepts UTF-8 CSV files or pasted CSV, with optional headers,
+  comma/semicolon/tab separators, and category or numeric-X interpretation.
+  Empty/NA values become `null`; invalid numeric fields report an error.
+- Loading an older ECharts-shaped option performs a one-way data migration;
+  no ECharts or charts-lite renderer ships in the slides runtime.
+- PowerPoint export of native Highcharts configurations currently produces an
+  editable data table preserving complete point JSON. PDF/slide images preserve
+  visual appearance. PowerPoint native chart import is a separate feature.
 
 ### `table`
 

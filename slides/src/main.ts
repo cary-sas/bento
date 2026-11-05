@@ -45,7 +45,7 @@ import { onlineTransport, startSharing, stopSharing, disconnectOnline, joinFromD
 // (window title suffix, save-picker label, update manifest + its `app` check).
 configureApp({
   appId: 'bento-slides',
-  appName: 'bento/slides',
+  appName: 'bento/slides · Highcharts',
   manifestUrl: 'https://bento.page/releases/slides/manifest.json',
 })
 

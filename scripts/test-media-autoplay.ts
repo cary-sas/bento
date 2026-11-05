@@ -120,7 +120,7 @@ fs.writeFileSync(pagePath, page)
 const dom = execFileSync(CHROME, [
   '--headless', '--disable-gpu', '--no-sandbox', '--dump-dom',
   '--allow-file-access-from-files', 'file://' + pagePath,
-], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 8 * 1024 * 1024 })
 
 const m = dom.match(/<div id="bento-results">([^<]*)<\/div>/)
 ok(!!m, 'the probe ran and reported (if this fails, nothing below means anything)')

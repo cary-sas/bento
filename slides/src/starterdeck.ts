@@ -776,8 +776,8 @@ export function starterDoc(): BentoDoc {
       id: S_CHARTS,
       background: PAPER,
       notes:
-        'The chart is a live ECharts instance while presenting: hover for tooltips, scroll to zoom. ' +
-        'Click “See the split” — it jumps to a hidden state slide and the bars MORPH into a pie.',
+        'The chart is a live Highcharts chart while presenting: hover for tooltips, drag to zoom. ' +
+        'Click “See the split” — it jumps to a hidden state slide and the chart becomes a pie.',
       elements: [
         dots(false),
         kicker('LIVE DATA', { color: PEACH_DEEP }),
@@ -789,7 +789,7 @@ export function starterDoc(): BentoDoc {
         shape('rect', { id: T_A, x: 944, y: 222, w: 44, h: 6, radius: 3, fill: PEACH }),
         text({
           x: 944, y: 248, w: 216, h: 210,
-          html: '<b>Hover the bars</b> — tooltips are live.<br><br>Scroll or pinch inside the chart to zoom the data.',
+          html: '<b>Hover the bars</b> — tooltips are live.<br><br>Drag inside the chart to select a zoom region.',
           fontSize: 16.5, fontWeight: 500, color: MIST, lineHeight: 1.7,
         }),
         shape('rect', {
@@ -816,7 +816,7 @@ export function starterDoc(): BentoDoc {
       name: 'pie split',
       notes:
         'A hidden STATE slide — linear navigation skips it; only the click reaches it. Same chart element id, ' +
-        'different option: ECharts’ universal transition morphs bar→pie in place. Click back.',
+        'different native Highcharts configuration shows a pie. Click back.',
       elements: [
         dots(false),
         kicker('LIVE DATA', { color: PEACH_DEEP }),
@@ -851,7 +851,7 @@ export function starterDoc(): BentoDoc {
       background: PAPER,
       name: 'scatter',
       notes:
-        'A third hidden state — the same chart element id becomes a SCATTER plot (bar⇄pie⇄scatter all morph in place). ' +
+        'A third hidden state — the same chart element id becomes a SCATTER plot (bar, pie and scatter use Highcharts). ' +
         'Two clusters show a reach↔engagement correlation. Click to cycle back to the bars.',
       elements: [
         dots(false),

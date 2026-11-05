@@ -14,7 +14,7 @@ import {
 import { THEME_CHOICES, setTheme, themeChoice } from '../../../kernel/src/theme.ts'
 import type { InPlaceOutcome } from '../update'
 import { APP_VERSION, applyUpdate, applyUpdateInPlace, autoCheckEnabled, canUpdateInPlace, checkForUpdates, compareVersions, offlineEnabled, sandboxed, setAutoCheck, setOffline } from '../update'
-import { CHART_PRESETS } from '../charts'
+import { HIGHCHARTS_PRESETS } from '../charts'
 import { cssColor, renderSlide, renderThumbnail } from '../render'
 import { openExportImagesDialog } from './exportimages'
 import { paletteSignature, resolveThemeRefs } from '../palette'
@@ -385,7 +385,7 @@ export class Editor {
       this.mediaDropdown(),
       btn(ICONS.table, t('Table'), () => this.canvas.insert(this.newTable()),
         t('Add a table — edit cells inline; turn it into a live chart from the panel')),
-      btn(ICONS.chart, t('Chart'), () => this.canvas.insert(defaultChart(applyChartPalette(CHART_PRESETS.bar(), this.store.doc.theme))),
+      btn(ICONS.chart, t('Chart'), () => this.canvas.insert(defaultChart(applyChartPalette(HIGHCHARTS_PRESETS.column(), this.store.doc.theme), { preset: 'column' })),
         t('Add a chart — edit it visually or link it to a table so it updates live')),
       btn(ICONS.code, t('Code'), () => this.canvas.insert(defaultCode({ color: readableInk(this.store.slide.background) }), true),
         t('Add a code snippet')),

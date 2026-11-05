@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "highcharts": "13.1.1",
     "moveable": "^0.53.0",
     "reveal.js": "^5.2.1",
     "selecto": "^1.26.3"

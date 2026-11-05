@@ -349,7 +349,7 @@ const tableRows = list(LIMITS.rows, shape(MODEL_KEYS.tableRow, {
 }, ['cells']))
 
 /**
- * A chart option is free-form ECharts-shaped JSON that charts-lite interprets
+ * A chart option is free-form Highcharts JSON that the chart adapter interprets
  * key by key, so there is no key table to check it against. What CAN be
  * checked is that it IS plain, bounded JSON — nothing exotic, nothing so deep
  * or so large that drawing it hangs the editor. Anything unexpected anywhere
@@ -377,7 +377,7 @@ const chartOption: Check = tag((v) => {
     )
   }
   return pure(v, LIMITS.optionDepth) ? v : DROP
-}, { type: 'object', description: 'ECharts-shaped option, plain JSON' })
+}, { type: 'object', description: 'Highcharts option, plain JSON' })
 
 /**
  * The `embed` element. `url` is what a live iframe LOADS, so it

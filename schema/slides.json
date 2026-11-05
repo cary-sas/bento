@@ -1016,7 +1016,7 @@
     },
     "prop-option": {
       "type": "object",
-      "description": "ECharts-shaped option, plain JSON"
+      "description": "Highcharts option, plain JSON"
     },
     "chart": {
       "type": "object",

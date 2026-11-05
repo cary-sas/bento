@@ -61,28 +61,6 @@ export interface ValidateOpts {
 }
 
 /**
- * Chart option keys charts-lite implements (kernel/src/charts.ts). Anything
- * else in an `option` is ignored at render time with no warning — the engine
- * reads the ECharts option SHAPE, it is not ECharts.
- *
- * Kept deliberately close to the renderer: `label` is listed for pie only,
- * because `renderPie` is the sole reader of it and a `label` on a bar or line
- * series genuinely does nothing.
- */
-const CHART_KEYS = {
-  top: ['color', 'series', 'xAxis', 'yAxis', 'legend', 'grid', 'tooltip', 'textStyle', 'dataZoom'],
-  series: ['type', 'name', 'data', 'yAxisIndex', 'itemStyle'],
-  seriesByType: {
-    bar: ['barWidth'],
-    line: ['smooth', 'symbol', 'symbolSize', 'lineStyle', 'areaStyle'],
-    scatter: ['symbol', 'symbolSize'],
-    pie: ['radius', 'label'],
-  } as Record<string, string[]>,
-  axis: ['type', 'data', 'min', 'max', 'axisLabel', 'axisLine', 'splitLine', 'name'],
-  legend: ['show', 'top', 'bottom', 'textStyle', 'itemWidth', 'itemHeight', 'itemGap', 'data'],
-}
-
-/**
  * Families a viewer's machine can be expected to resolve without the document
  * carrying the bytes — generics, the CSS system keywords, and the faces that
  * ship with mainstream desktop operating systems.
@@ -402,48 +380,14 @@ export function validateDoc(doc: BentoDoc, opts: ValidateOpts = {}): ValidateRes
   return { ok: counts.error === 0, measured: measure, counts, findings }
 }
 
-/** Report option keys charts-lite does not implement. */
-function validateChart(
-  option: Record<string, any>,
-  at: { slide: string; element: string },
-  add: (f: Finding) => void,
-) {
-  const note = (path: string, what: string) =>
-    add({ ...at, code: 'chart-key-ignored', severity: 'warning', path,
-      message: `charts-lite does not implement ${what} — it is ignored, with no warning at render time.` })
-
-  for (const k of Object.keys(option)) {
-    if (!CHART_KEYS.top.includes(k)) note(`option.${k}`, `the top-level chart option "${k}"`)
+/** Highcharts accepts native options. Check document-specific constraints only. */
+function validateChart(option: Record<string, any>, at: { slide: string; element: string }, add: (f: Finding) => void) {
+  for (const [i, series] of (Array.isArray(option.series) ? option.series : []).entries()) {
+    if (series?.label) add({ ...at, code: 'chart-key-ignored', severity: 'warning', path: `option.series[${i}].label`, message: 'Use Highcharts dataLabels instead of label.' })
   }
-  const series = Array.isArray(option.series) ? option.series : option.series ? [option.series] : []
-  series.forEach((s: any, i: number) => {
-    if (!s || typeof s !== 'object') return
-    const allowed = [...CHART_KEYS.series, ...(CHART_KEYS.seriesByType[s.type] ?? [])]
-    for (const k of Object.keys(s)) {
-      if (allowed.includes(k)) continue
-      // the one people reach for most, and the one that reads as a bug
-      if (k === 'label') {
-        note(`option.series[${i}].label`,
-          'value labels on a bar, line or scatter series (label is read for pie only)')
-      } else {
-        note(`option.series[${i}].${k}`, `"${k}" on a ${s.type ?? 'series'} series`)
-      }
-    }
-  })
-  for (const axis of ['xAxis', 'yAxis'] as const) {
-    const list = Array.isArray(option[axis]) ? option[axis] : option[axis] ? [option[axis]] : []
-    list.forEach((a: any, i: number) => {
-      if (!a || typeof a !== 'object') return
-      for (const k of Object.keys(a)) {
-        if (!CHART_KEYS.axis.includes(k)) note(`option.${axis}[${i}].${k}`, `"${k}" on an axis`)
-      }
-    })
-  }
-  if (option.legend && typeof option.legend === 'object') {
-    for (const k of Object.keys(option.legend)) {
-      if (!CHART_KEYS.legend.includes(k)) note(`option.legend.${k}`, `"${k}" on the legend`)
-    }
-  }
+  if (option.toolbox) add({ ...at, code: 'chart-key-ignored', severity: 'warning', path: 'option.toolbox', message: 'ECharts toolbox is not a Highcharts option.' })
+  if (!Array.isArray(option.series) || !option.series.length)
+    add({ ...at, code: 'chart-no-series', severity: 'warning', path: 'option.series', message: 'Highcharts needs at least one series.' })
 }
 
 /**

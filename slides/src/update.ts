@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 The Bento authors
-// Facade: signed self-update lives in the shared kernel now
-// (kernel/src/update.ts). App identity (manifest url, manifest `app` id) is
-// supplied by configureApp() in main.ts — see docs/PLATFORM.md §6, §9.
+// Keep encryption/save helpers, but this licensed fork has no signed release
+// channel. Never replace it with an ordinary upstream shell or contact that
+// channel automatically. Administrators update it from the internal server.
+import { t } from './i18n'
+import type { UpdateCheck } from '../../kernel/src/update.ts'
 export * from '../../kernel/src/update.ts'
+export function autoCheckEnabled(): boolean { return false }
+export async function checkForUpdates(_manifestUrl?: string): Promise<UpdateCheck> {
+  return { status: 'error', message: t('This Highcharts edition is updated from your internal server.') }
+}
