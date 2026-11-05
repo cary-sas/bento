@@ -6,6 +6,7 @@ import 'highcharts/es-modules/masters/modules/xrange.src.js'
 import 'highcharts/es-modules/masters/modules/exporting.src.js'
 import 'highcharts/es-modules/masters/modules/accessibility.src.js'
 interface ChartLike { w: number; h: number; option: Record<string, unknown> }
+import { chartTransitionData } from './chart-transition'
 import { cssDecodeIdentEscapes } from '../../kernel/src/svgsafe.ts'
 
 // No callbacks or fetching options from a foreign document. The separate
@@ -80,10 +81,20 @@ export function highchartsSnapshot(el: ChartLike): string {
     return new XMLSerializer().serializeToString(svg) || blank
   } finally { chart?.destroy(); host.remove() }
 }
-export function mountHighcharts(el: ChartLike, host: HTMLElement): () => void {
+export function mountHighcharts(el: ChartLike, host: HTMLElement, fromOption?: Record<string, unknown>, durationMs = 600): () => void {
   host.innerHTML = ''
   try {
-    const chart = Highcharts.chart(host, options(el, true))
+    const target = options(el, true)
+    const before = fromOption && chartTransitionData(options({ ...el, option: fromOption }, true), target)
+    const initial = before ? Highcharts.merge(target, { series: target.series.map((s: any, i: number) => ({ ...s, data: before[i] })) }) : target
+    const chart = Highcharts.chart(host, initial)
+    let disposed = false
+    const frame = before ? requestAnimationFrame(() => {
+      if (disposed) return
+      const animation = { duration: Math.max(0, Math.min(6000, durationMs)) }
+      chart.series.forEach((series, i) => series.setData(target.series[i].data, false, animation, true))
+      chart.redraw(animation)
+    }) : undefined
     // Reveal can scale/reposition the parent after mounting. Highcharts caches
     // the initial chart offset (sometimes while the section is still hidden),
     // so refresh it before events are normalized into chart coordinates.
@@ -92,6 +103,8 @@ export function mountHighcharts(el: ChartLike, host: HTMLElement): () => void {
     for (const event of events) host.addEventListener(event, invalidatePosition, { capture: true, passive: true })
     return () => {
       for (const event of events) host.removeEventListener(event, invalidatePosition, true)
+      disposed = true
+      if (frame !== undefined) cancelAnimationFrame(frame)
       chart.destroy()
     }
   } catch {

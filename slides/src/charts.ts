@@ -7,6 +7,7 @@ export interface ChartInput { w: number; h: number; option: Record<string, unkno
 export function chartSnapshotSvg(el: ChartInput): string {
   return highchartsSnapshot({ ...el, option: normalizeChartOptions(el.option) })
 }
-export function mountChart(el: ChartInput, host: HTMLElement, _fromOption?: Record<string, unknown>): () => void {
-  return mountHighcharts({ ...el, option: normalizeChartOptions(el.option) }, host)
+export function mountChart(el: ChartInput, host: HTMLElement, fromOption?: Record<string, unknown>, durationMs = 600): () => void {
+  return mountHighcharts({ ...el, option: normalizeChartOptions(el.option) }, host,
+    fromOption && normalizeChartOptions(fromOption), durationMs)
 }

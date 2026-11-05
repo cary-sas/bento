@@ -112,6 +112,47 @@ try {
   await convertedPage.locator('.ed-stage-scale svg.highcharts-root').waitFor()
   assert.deepEqual(await convertedPage.evaluate(()=>window.bento.doc.slides[0].elements[0].option.series[0].data),[12,null,-4.25])
   if(process.env.BENTO_SCREENSHOTS) await convertedPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'pptx-imported-chart.png'),fullPage:true})
+  // Measure actual rendered column heights over time; a target option alone
+  // would also pass if the data merely jumped to its final value.
+  const morph = doc({chart:{type:'column'},xAxis:{categories:['A','B','C']},yAxis:{min:0,max:25},
+    legend:{enabled:false},series:[{name:'Value',data:[2,4,3]}]})
+  morph.present={morphSeconds:2}
+  morph.slides[0].elements[0].morphId='shared-chart'
+  const next=structuredClone(morph.slides[0]);next.id='next';next.transition='morph'
+  next.elements[0].id='next-chart';next.elements[0].option.series[0].data=[12,15,20]
+  morph.slides.push(next)
+  await p.evaluate(json=>window.bento.loadDoc(json),JSON.stringify(morph))
+  await p.locator('.ed-pill-caret').click()
+  await p.getByRole('button',{name:'Present in this tab',exact:true}).click()
+  await p.locator('.bento-present-overlay section.present [data-highcharts-chart]').waitFor()
+  await p.keyboard.press('ArrowRight')
+  await p.locator('.bento-present-overlay section.present [data-el-id="next-chart"][data-highcharts-chart]').waitFor()
+  const heights = await p.evaluate(async()=>{
+    const values=[],start=performance.now()
+    while(performance.now()-start<2300) {
+      await new Promise(requestAnimationFrame)
+      const point=document.querySelector('.bento-present-overlay section.present [data-el-id="next-chart"] .highcharts-series-group .highcharts-point')
+      if(point)values.push(point.getBoundingClientRect().height)
+    }
+    return values
+  })
+  assert.ok(heights.length>10)
+  assert.ok(heights.at(-1)>heights[0]+40,`column animates rather than jumps: ${heights[0]} → ${heights.at(-1)}`)
+  assert.ok(new Set(heights.map(h=>Math.round(h))).size>5,'multiple intermediate rendered heights')
+  await p.keyboard.press('Escape')
+  // Reduced-motion viewers see the final values immediately.
+  await p.emulateMedia({reducedMotion:'reduce'})
+  await p.evaluate(json=>window.bento.loadDoc(json),JSON.stringify(morph))
+  await p.locator('.ed-pill-caret').click()
+  await p.getByRole('button',{name:'Present in this tab',exact:true}).click()
+  await p.locator('.bento-present-overlay section.present [data-highcharts-chart]').waitFor()
+  await p.keyboard.press('ArrowRight')
+  const reduced=p.locator('.bento-present-overlay section.present [data-el-id="next-chart"] .highcharts-series-group .highcharts-point').first()
+  await reduced.waitFor()
+  const reducedHeight=(await reduced.boundingBox()).height
+  assert.ok(Math.abs(reducedHeight-heights.at(-1))<3,'reduced motion starts at the final geometry')
+  await p.keyboard.press('Escape')
+  await p.emulateMedia({reducedMotion:'no-preference'})
   assert.deepEqual(errors,[])
   assert.deepEqual(external,[],'no external request while loading, importing CSV, presenting or saving')
   console.log('Highcharts browser acceptance passed: presets, UTF-8 CSV file, pasted XY, headers, native JSON, tooltip and offline save/open.')
