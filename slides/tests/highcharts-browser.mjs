@@ -56,7 +56,7 @@ try {
   await p.getByRole('button',{name:'Apply CSV data',exact:true}).click()
   assert.deepEqual(await p.evaluate(()=>window.bento.doc.slides[0].elements[0].option.series[0].data),[[0,1],[5,4]])
   await p.getByText('Advanced (JSON)',{exact:true}).click()
-  const native={chart:{type:'line'},title:{text:'Native configuration'},series:[{name:'Value',data:[2,6,3]}],tooltip:{pointFormat:'Value: {point.y}'}}
+  const native={chart:{type:'line'},title:{text:'Native configuration'},plotOptions:{series:{marker:{enabled:true}}},series:[{name:'Value',data:[2,6,3]}],tooltip:{pointFormat:'Value: {point.y}'}}
   await p.locator('.ed-chart-json').fill(JSON.stringify(native));await p.locator('.ed-chart-json').press('Tab')
   await p.waitForFunction(()=>window.bento.doc.slides[0].elements[0].option.title.text==='Native configuration')
   // Present in tab: hover on actual Highcharts hit targets, toggle a series.
@@ -64,12 +64,12 @@ try {
   await p.getByRole('button',{name:'Present in this tab',exact:true}).click()
   const live=p.locator('.bento-present-overlay [data-el-id="chart"]')
   await p.waitForFunction(()=>document.querySelector('.bento-present-overlay [data-el-id=\"chart\"]')?.hasAttribute('data-highcharts-chart'))
-  await live.locator('.highcharts-point').first().waitFor()
-  await live.locator('.highcharts-point').first().hover()
+  await live.locator('.highcharts-series-group .highcharts-point').first().waitFor()
+  await live.locator('.highcharts-series-group .highcharts-point').first().hover()
   try {
     await p.waitForFunction(()=>[...document.querySelectorAll('.highcharts-tooltip')].some(e=>e.getAttribute('visibility')!=='hidden'),null,{timeout:10000})
   } catch(error) {
-    console.log('Tooltip diagnostic',JSON.stringify(await live.evaluate(el=>({html:el.innerHTML.slice(-6000),rect:el.getBoundingClientRect().toJSON(),attr:el.getAttribute('data-highcharts-chart')}))))
+    console.log('Tooltip diagnostic',JSON.stringify(await live.evaluate(el=>({html:el.innerHTML.slice(-3000),rect:el.getBoundingClientRect().toJSON(),attr:el.getAttribute('data-highcharts-chart'),points:[...el.querySelectorAll('.highcharts-point')].map(p=>{const r=p.getBoundingClientRect();return {cls:p.parentElement?.getAttribute('class'),rect:r.toJSON(),hit:document.elementsFromPoint(r.x+r.width/2,r.y+r.height/2).slice(0,3).map(x=>x.getAttribute('class'))}})}))))
     if(process.env.BENTO_SCREENSHOTS) { await fs.mkdir(process.env.BENTO_SCREENSHOTS,{recursive:true}); await p.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'tooltip-failure.png')}) }
     throw error
   }
