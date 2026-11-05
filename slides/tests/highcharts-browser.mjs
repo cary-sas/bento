@@ -63,9 +63,16 @@ try {
   await p.locator('.ed-pill-caret').click()
   await p.getByRole('button',{name:'Present in this tab',exact:true}).click()
   const live=p.locator('.bento-present-overlay [data-el-id="chart"]')
+  await p.waitForFunction(()=>document.querySelector('.bento-present-overlay [data-el-id=\"chart\"]')?.hasAttribute('data-highcharts-chart'))
   await live.locator('.highcharts-point').first().waitFor()
   await live.locator('.highcharts-point').first().hover()
-  await p.waitForFunction(()=>[...document.querySelectorAll('.highcharts-tooltip')].some(e=>e.getAttribute('visibility')!=='hidden'))
+  try {
+    await p.waitForFunction(()=>[...document.querySelectorAll('.highcharts-tooltip')].some(e=>e.getAttribute('visibility')!=='hidden'),null,{timeout:10000})
+  } catch(error) {
+    console.log('Tooltip diagnostic',JSON.stringify(await live.evaluate(el=>({html:el.innerHTML.slice(-6000),rect:el.getBoundingClientRect().toJSON(),attr:el.getAttribute('data-highcharts-chart')}))))
+    if(process.env.BENTO_SCREENSHOTS) { await fs.mkdir(process.env.BENTO_SCREENSHOTS,{recursive:true}); await p.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'tooltip-failure.png')}) }
+    throw error
+  }
   await p.keyboard.press('Escape')
   // Save and open the result offline; all Highcharts code lives in that file.
   const saved=path.join(temp,'saved.bento.html')

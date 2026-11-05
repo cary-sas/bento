@@ -12,7 +12,7 @@ export const pt: Catalog = {
   "CSV file": "Arquivo CSV",
   "CSV data": "Dados CSV",
   "CSV interpretation": "Interpretação CSV",
-  "CSV delimiter": "Separador CSV",
+  "CSV delimiter": "Delimitador CSV",
   "Category,Series A,Series B": "Categoria,Série A,Série B",
   "First column: categories": "Primeira coluna: categorias",
   "First column: numeric X": "Primeira coluna: X numérico",

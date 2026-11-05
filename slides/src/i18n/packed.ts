@@ -20,7 +20,7 @@ export const PACKED: Record<string, ReadonlyArray<string | 0>> = {
   "CSV file": ["CSVファイル","CSV 文件","CSV 檔案","Archivo CSV","Fichier CSV","CSV-Datei","File CSV","Arquivo CSV"],
   "CSV data": ["CSVデータ","CSV 数据","CSV 資料","Datos CSV","Données CSV","CSV-Daten","Dati CSV","Dados CSV"],
   "CSV interpretation": ["CSVの解釈","CSV 列解释","CSV 欄位解讀","Interpretación CSV","Interprétation CSV","CSV-Auswertung","Interpretazione CSV","Interpretação CSV"],
-  "CSV delimiter": ["CSV区切り文字","CSV 分隔符","CSV 分隔符號","Separador CSV","Séparateur CSV","CSV-Trennzeichen","Separatore CSV","Separador CSV"],
+  "CSV delimiter": ["CSV区切り文字","CSV 分隔符","CSV 分隔符號","Separador CSV","Séparateur CSV","CSV-Trennzeichen","Separatore CSV","Delimitador CSV"],
   "Category,Series A,Series B": ["分類,系列A,系列B","分类,系列A,系列B","分類,系列A,系列B","Categoría,Serie A,Serie B","Catégorie,Série A,Série B","Kategorie,Reihe A,Reihe B","Categoria,Serie A,Serie B","Categoria,Série A,Série B"],
   "First column: categories": ["先頭列：カテゴリ","首列：分类标签","首欄：分類標籤","Primera columna: categorías","Première colonne : catégories","Erste Spalte: Kategorien","Prima colonna: categorie","Primeira coluna: categorias"],
   "First column: numeric X": ["先頭列：数値X","首列：数值 X","首欄：數值 X","Primera columna: X numérica","Première colonne : X numérique","Erste Spalte: numerisches X","Prima colonna: X numerico","Primeira coluna: X numérico"],

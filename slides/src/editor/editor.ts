@@ -7,7 +7,7 @@ import type { Store } from '../store'
 import {
   FORMAT_VERSION,
   MEDIA_EMBED_BUDGET,
-  applyLayout, builtinLayouts, defaultChart, defaultCode, defaultImage, defaultMedia, defaultShape, defaultTable, defaultText,
+  applyChartPalette, applyLayout, builtinLayouts, defaultChart, defaultCode, defaultImage, defaultMedia, defaultShape, defaultTable, defaultText,
   instantiateLayout, isLightBg, layoutElementIds, newDocId, parseDoc, readableInk, syncLinkedChart, uid,
   paginates, inLinearFlow,
   type ChartElement, type ShapeKind, type Slide, type SlideElement, type TableElement } from '../model'
@@ -385,7 +385,7 @@ export class Editor {
       this.mediaDropdown(),
       btn(ICONS.table, t('Table'), () => this.canvas.insert(this.newTable()),
         t('Add a table — edit cells inline; turn it into a live chart from the panel')),
-      btn(ICONS.chart, t('Chart'), () => this.canvas.insert(defaultChart({ ...HIGHCHARTS_PRESETS.column(), colors: this.store.doc.theme.chartPalette ?? undefined }, { preset: 'column' })),
+      btn(ICONS.chart, t('Chart'), () => this.canvas.insert(defaultChart(applyChartPalette(HIGHCHARTS_PRESETS.column(), this.store.doc.theme), { preset: 'column' })),
         t('Add a chart — edit it visually or link it to a table so it updates live')),
       btn(ICONS.code, t('Code'), () => this.canvas.insert(defaultCode({ color: readableInk(this.store.slide.background) }), true),
         t('Add a code snippet')),
