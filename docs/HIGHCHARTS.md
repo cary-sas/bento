@@ -18,7 +18,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\server\import\Setup.ps
 ```
 
 无需另外安装 Highcharts；`npm ci` 按锁文件安装版本，`build:single` 会把它包含在 HTML 中。
-应用身份使用 `bento-slides-highcharts`，不查询或接受上游普通版的更新，避免更新后失去 Highcharts；
+本版保持文档存储身份不变，但关闭了上游更新检查，避免更新后失去 Highcharts；
 升级此版本通过更新 Fork 源码并重新构建完成。没有创建签名密钥或发布新的在线更新通道。
 
 ## 编辑图表

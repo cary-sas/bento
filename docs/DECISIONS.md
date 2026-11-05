@@ -12220,5 +12220,6 @@ chart engine remains for other apps but is unreachable from slides' runtime.
 Older option data can migrate in one direction; there is no old rendering path.
 Native JSON and local UTF-8 CSV are the input formats; callbacks, fetching
 options and remote export endpoints stay disabled. Native Highcharts PPTX
-exports use an explicit complete-point data-table fallback. The fork has its
-own app identity so ordinary upstream signed updates cannot remove its renderer.
+exports use an explicit complete-point data-table fallback. Slides keeps its
+storage identity for autosave/host interoperability; its update facade disables
+upstream checks so ordinary upstream updates cannot remove its renderer.
