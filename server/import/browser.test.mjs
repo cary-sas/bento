@@ -7,6 +7,7 @@ import os from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { configFromEnv } from './config.mjs'
 import { startServer } from './server.mjs'
+import { chartFixture } from '../../scripts/test-convert/_chart-import-fixtures.ts'
 import { fxMinimal } from '../../scripts/test-convert/_fixtures.ts'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
 const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'bento browser '))
@@ -34,6 +35,7 @@ try {
   await download.saveAs(saved)
   assert.match(await fs.readFile(saved, 'utf8'), /Rig Deck/)
   const deck = await ctx.newPage()
+  deck.on('pageerror',e=>errors.push(e.message))
   await deck.goto(pathToFileURL(saved).href)
   await deck.waitForFunction(() => window.bento?.doc?.title === 'Rig Deck', null, { timeout: 60000 })
   assert.equal(await deck.evaluate(() => window.bento.doc.slides.length), 1)
@@ -49,6 +51,24 @@ try {
   await page.locator('#delete').click()
   await page.locator('#upload').waitFor({ state: 'visible' })
   assert.equal(await page.locator('#result').isVisible(), false)
+  // Upload a native chart through the real server, then boot its downloaded
+  // single-file document with all outbound HTTP requests still blocked.
+  const chartInput = path.join(temp,'chart.pptx')
+  await fs.writeFile(chartInput,await chartFixture())
+  await page.locator('#file').setInputFiles(chartInput)
+  await page.locator('#convert').click()
+  await page.locator('#download').waitFor({state:'visible',timeout:60000})
+  const chartDownloadEvent=page.waitForEvent('download')
+  await page.locator('#download').click()
+  const chartDownload=await chartDownloadEvent, chartFile=path.join(temp,'chart.bento.html')
+  await chartDownload.saveAs(chartFile)
+  const chartPage=await ctx.newPage()
+  chartPage.on('pageerror',e=>errors.push(e.message))
+  await chartPage.goto(pathToFileURL(chartFile).href)
+  await chartPage.locator('.ed-stage-scale svg.highcharts-root').waitFor()
+  assert.equal(await chartPage.locator('.ed-stage-scale .highcharts-series-group .highcharts-point').count(),2)
+  assert.deepEqual(await chartPage.evaluate(()=>window.bento.doc.slides[0].elements[0].option.series[0].data),[12,null,-4.25])
+  if(process.env.BENTO_SCREENSHOTS) await chartPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'server-imported-chart.png'),fullPage:true})
   assert.deepEqual(errors, [])
-  console.log('Browser acceptance passed: upload, report, download, offline deck boot, mobile layout, delete.')
+  console.log('Browser acceptance passed: upload, report, download, offline deck boot, mobile layout, delete, native chart upload/download/render without outbound requests.')
 } finally { await browser.close(); await app.close(); await fs.rm(temp, { recursive: true, force: true }) }
