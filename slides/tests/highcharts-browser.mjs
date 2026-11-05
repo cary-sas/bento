@@ -65,7 +65,13 @@ try {
   const live=p.locator('.bento-present-overlay [data-el-id="chart"]')
   await p.waitForFunction(()=>document.querySelector('.bento-present-overlay [data-el-id=\"chart\"]')?.hasAttribute('data-highcharts-chart'))
   await live.locator('.highcharts-series-group .highcharts-point').first().waitFor()
-  await live.locator('.highcharts-series-group .highcharts-point').first().hover()
+  const target = live.locator('.highcharts-series-group .highcharts-point').first()
+  await target.hover()
+  // Highcharts builds a line series' KD tree asynchronously on the first
+  // pointer query. Real hover includes continued movement after that query.
+  const box = await target.boundingBox()
+  await p.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2, { steps: 4 })
+  await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 })
   try {
     await p.waitForFunction(()=>[...document.querySelectorAll('.highcharts-tooltip')].some(e=>e.getAttribute('visibility')!=='hidden'),null,{timeout:10000})
   } catch(error) {
