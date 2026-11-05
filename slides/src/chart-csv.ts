@@ -54,8 +54,8 @@ export function csvToHighcharts(current: ChartOptions, text: string, settings: C
   const header = settings.header !== false ? rows.shift()! : null
   if (!rows.length) throw new ChartCsvError('CSV has no data rows')
   const type = current.chart?.type ?? 'column'
-  if (!['column', 'bar', 'line', 'spline', 'area', 'areaspline', 'scatter', 'pie', 'waterfall'].includes(type))
-    throw new ChartCsvError('CSV import supports column, bar, line, area, scatter, pie and waterfall charts. Select one of these types first.')
+  if (!['column', 'bar', 'line', 'spline', 'area', 'areaspline', 'scatter', 'pie'].includes(type))
+    throw new ChartCsvError('CSV import supports column, bar, line, area, scatter and pie charts. Select one of these types first.')
   if (type === 'pie' && rows[0].length !== 2) throw new ChartCsvError('Pie CSV requires exactly two columns: name and value')
   const xy = settings.mode === 'xy'
   const axis = Array.isArray(current.xAxis) ? (current.xAxis[0] ?? {}) : (current.xAxis ?? {})

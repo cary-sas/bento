@@ -25,7 +25,7 @@ jobs:
       - name: Typecheck and data/CSV tests
         run: |
           node slides/node_modules/typescript/bin/tsc -p convert
-          node --test slides/tests/highcharts-data.test.mjs slides/tests/chart-transition.test.mjs
+          node --test slides/tests/highcharts-data.test.mjs slides/tests/chart-transition.test.mjs slides/tests/highcharts-core.test.mjs
           node scripts/test-chart-import.mjs
           node scripts/test-convert/highcharts-export.ts
           node --test server/import/server.test.mjs

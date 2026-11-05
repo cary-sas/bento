@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const ja: Catalog = {
+  "CSV import supports column, bar, line, area, scatter and pie charts. Select one of these types first.": "CSV の読み込みは縦棒、横棒、折れ線、面、散布図、円グラフに対応しています。先に対応する種類を選択してください。",
   "This Highcharts edition is updated from your internal server.": "このHighcharts版は社内サーバーから更新してください。",
   "Renderer": "レンダラー",
   "Import CSV": "CSVを読み込む",

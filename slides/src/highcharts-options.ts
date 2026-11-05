@@ -12,12 +12,6 @@ export const HIGHCHARTS_PRESETS: Record<string, () => ChartOptions> = {
   area: () => ({ chart: { type: 'area' }, xAxis: { categories: ['Jan', 'Feb', 'Mar', 'Apr'] }, series: [{ name: 'Trend', data: [4, 7, 6, 11] }] }),
   pie: () => ({ chart: { type: 'pie' }, series: [{ name: 'Share', data: [{ name: 'Alpha', y: 42 }, { name: 'Beta', y: 28 }, { name: 'Gamma', y: 30 }] }] }),
   scatter: () => ({ chart: { type: 'scatter' }, series: [{ name: 'Observations', data: [[10, 8], [15, 12], [22, 10], [28, 19]] }] }),
-  waterfall: () => ({ chart: { type: 'waterfall' }, xAxis: { type: 'category' }, series: [{ name: 'Change', data: [
-    { name: 'Start', y: 20 }, { name: 'Increase', y: 12 }, { name: 'Decrease', y: -7 }, { name: 'Total', isSum: true },
-  ] }] }),
-  boxplot: () => ({ chart: { type: 'boxplot' }, xAxis: { categories: ['Group A', 'Group B'] }, series: [{ name: 'Distribution', data: [[5, 8, 12, 17, 22], [7, 10, 14, 19, 25]] }] }),
-  xrange: () => ({ chart: { type: 'xrange' }, xAxis: { title: { text: 'Days' } }, yAxis: { categories: ['Subject 1', 'Subject 2'], reversed: true },
-    series: [{ name: 'Treatment', data: [{ x: 0, x2: 20, y: 0 }, { x: 5, x2: 30, y: 1 }] }] }),
 }
 
 /** Convert the supported charts-lite subset, preserving series and axis data. */
