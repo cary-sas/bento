@@ -3,20 +3,9 @@
 //
 // Refuse a .pptx that would hurt the machine reading it — BEFORE inflating it.
 //
-// A .pptx is a ZIP from a program we do not control, and the public import page
-// accepts one from anyone. `readZip` (kernel/src/convert/zip.ts) inflates each
-// entry in full and only then compares it with the size the central directory
-// declared, so a decompression bomb detonates before any check runs. This reads
-// the central directory ONLY — a few hundred bytes of structure, no inflation —
-// and refuses on what the archive itself declares.
-//
-// WHAT THIS DOES NOT COVER, stated rather than implied. An archive that LIES in
-// its central directory (declares a small size, inflates to a huge one) passes
-// this and is caught by readZip's size check only after inflating. Closing that
-// needs a byte cap inside the kernel's inflateRaw — it is shared with dash's
-// .xlsx import, which has the same exposure — so it belongs to the kernel zone
-// under the lock. Reported there privately rather than duplicated here: a second
-// ZIP reader in this directory would be a second thing to keep correct.
+// Browser defaults remain fixed. Trusted server/CLI hosts can explicitly raise
+// only input and total declared bytes; entry-count, ratio and ZIP64 checks stay.
+// The shared ZIP reader additionally bounds each entry while inflating it.
 
 export const LIMITS = {
   /** the .pptx itself. The census's largest real deck is 275MB of photos, and a
@@ -34,6 +23,11 @@ export const LIMITS = {
   ratioFloor: 1024 * 1024,
 } as const
 
+export interface ImportLimits {
+  inputBytes?: number
+  totalUncompressed?: number
+}
+
 export class LimitError extends Error {}
 
 const SIG_EOCD = 0x06054b50
@@ -43,10 +37,16 @@ const SIG_CD = 0x02014b50
  * Throw a LimitError naming the limit, or return the declared totals.
  * Structural damage is left to readZip, which reports it better.
  */
-export function preflight(bytes: Uint8Array): { entries: number; uncompressed: number } {
+export function preflight(bytes: Uint8Array, overrides: ImportLimits = {}): { entries: number; uncompressed: number } {
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!['inputBytes', 'totalUncompressed'].includes(key) ||
+        !Number.isSafeInteger(value) || value < 1 || value > 4096 * 1024 * 1024)
+      throw new LimitError(`invalid import limit: ${key}`)
+  }
+  const limits = { ...LIMITS, ...overrides }
   const mb = (n: number) => `${Math.round(n / 1024 / 1024)}MB`
-  if (bytes.length > LIMITS.inputBytes)
-    throw new LimitError(`this file is ${mb(bytes.length)}; the limit is ${mb(LIMITS.inputBytes)}`)
+  if (bytes.length > limits.inputBytes)
+    throw new LimitError(`this file is ${mb(bytes.length)}; the limit is ${mb(limits.inputBytes)}`)
   if (bytes.length < 22) return { entries: 0, uncompressed: 0 }
   const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   let eocd = -1
@@ -73,8 +73,8 @@ export function preflight(bytes: Uint8Array): { entries: number; uncompressed: n
     if (usize === 0xffffffff || csize === 0xffffffff)
       throw new LimitError('this archive uses ZIP64 sizes; a presentation never needs them')
     total += usize
-    if (total > LIMITS.totalUncompressed)
-      throw new LimitError(`this file unpacks to more than ${mb(LIMITS.totalUncompressed)}`)
+    if (total > limits.totalUncompressed)
+      throw new LimitError(`this file unpacks to more than ${mb(limits.totalUncompressed)}`)
     if (usize > LIMITS.ratioFloor && usize > LIMITS.ratio * Math.max(csize, 1))
       throw new LimitError(`one part compresses ${Math.round(usize / Math.max(csize, 1))}:1 — that is not a document part`)
     p += 46 + v.getUint16(p + 28, true) + v.getUint16(p + 30, true) + v.getUint16(p + 32, true)

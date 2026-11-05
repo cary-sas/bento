@@ -22,6 +22,14 @@ from [bento.page](https://bento.page/releases/slides/Bento_Slides.bento.html)
 (~560 KB, no account, no installer). Open it in any modern browser and it *is*
 the editor. Save, and it rewrites itself with your deck inside.
 
+## Windows Server / Linux 内网 PPTX 导入（本 Fork）
+
+本 Fork 增加可自行部署的导入服务：默认允许 500 MiB 上传、后台串行转换、
+HTML/报告下载和定时清理；原有浏览器版功能保留。
+Windows Server 部署、便携 Node.js 和开机任务说明见
+[server/import/README.md](server/import/README.md)。大文件限制可配置；
+原生表格、图表、动画的导入限制仍然存在。
+
 ## Why this exists
 
 Office documents used to be things you *had*. Now they're things you rent —

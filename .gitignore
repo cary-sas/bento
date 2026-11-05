@@ -93,3 +93,9 @@ home/android/*/build/
 # itself ships none, so anything here is a working copy, not a shared contract.
 .claude/agents
 .claude/commands/team
+
+# Self-hosted conversion service (uploads/results/configuration stay local)
+server/import/data/
+server/import/*.env
+server/import/*.local.ps1
+server/import/runtime/

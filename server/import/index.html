@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>bento/import</title><link rel="stylesheet" href="/style.css"><script src="/client.js" defer></script></head>
+<body><main><header><b>bento<span>/</span>import</b><small>内网转换服务 · Internal server</small></header>
+<h1>把 PowerPoint 转成一个 HTML 文件</h1><p>上传 .pptx，由本服务器转换成可编辑、可演示的 bento/slides 文档。</p>
+<p class="notice">分享前请检查结果：当前尚不支持导入 PowerPoint 原生表格和图表；动画不保留，字体及部分视觉效果可能变化。<br>Native PowerPoint tables, charts and animations are not preserved. Review the conversion report.</p>
+<form id="login" hidden><label for="password">服务器访问密码 / Access password</label><div class="row"><input id="password" type="password" autocomplete="current-password" required><button>登录 / Sign in</button></div></form>
+<form id="upload" hidden><label class="drop" for="file"><strong>选择 PowerPoint 文件 / Choose a .pptx</strong><span id="limits"></span><input id="file" type="file" accept=".pptx" required></label><p id="selected"></p><button id="convert">上传并转换 / Convert</button></form>
+<div role="status" id="status" aria-live="polite"></div><progress id="progress" max="100" value="0" hidden></progress>
+<section id="result" hidden><h2 id="name"></h2><p id="state"></p><div class="row"><a class="button" id="download" hidden>下载 HTML</a><a id="report" hidden>下载转换报告 / Report</a><button class="secondary" id="delete" hidden>删除文件 / 转换下一个</button></div><p id="expiry"></p><details id="findings" hidden><summary>查看转换报告 / Conversion findings</summary><pre id="report-text"></pre></details></section>
+<footer>转换不调用外部服务。下载的 HTML 可用现代浏览器本地打开。标准编辑器可能检查更新；可在编辑器中启用离线模式以阻止联网。<br>Conversion uses a local shell. The downloaded editor has its own Offline mode.</footer></main></body></html>
