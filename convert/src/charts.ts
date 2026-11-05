@@ -115,7 +115,8 @@ export function chartFrom(
       if (valuesBudget > 12000) return reject('Chart exceeds the import data budget')
       const out: Record<string, unknown> = { type, name: name || `Series ${series.length + 1}`, yAxis }
       const spPr = kid(s, NS.c, 'spPr')
-      const color = spPr && resolveColor(ak(spPr, 'solidFill') ?? ak(ak(spPr, 'ln'), 'solidFill'), ctx.theme)
+      const markerPr = ck(s, 'marker') && kid(ck(s, 'marker')!, NS.c, 'spPr')
+      const color = resolveColor(ak(spPr, 'solidFill') ?? ak(ak(spPr, 'ln'), 'solidFill') ?? ak(markerPr, 'solidFill'), ctx.theme)
       if (color) out.color = color.css
       if (type === 'scatter') {
         const xs = cache(ck(s, 'xVal'), true)
@@ -138,6 +139,15 @@ export function chartFrom(
           if (categories && JSON.stringify(categories) !== JSON.stringify(names)) return reject('Series use different category axes')
           categories = names
           out.data = values
+        }
+      }
+      for (const point of kids(s, NS.c, 'dPt')) {
+        const index = Number(cv(point, 'idx'))
+        const pointColor = resolveColor(ak(ck(point, 'spPr'), 'solidFill'), ctx.theme)
+        const data = out.data as any[]
+        if (pointColor && Number.isInteger(index) && index >= 0 && index < data.length) {
+          const value = data[index]
+          data[index] = { ...(Array.isArray(value) ? { x: value[0], y: value[1] } : value && typeof value === 'object' ? value : { y: value }), color: pointColor.css }
         }
       }
       const grouping = cv(group, 'grouping')

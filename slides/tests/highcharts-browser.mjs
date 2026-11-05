@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import assert from 'node:assert/strict'
 import { pathToFileURL, fileURLToPath } from 'node:url'
+import { exportPptx } from '../../convert/src/pptx-write/index.ts'
 import { convertPptx } from '../../convert/src/pptx.ts'
 import { chartFixture } from '../../scripts/test-convert/_chart-import-fixtures.ts'
 import { HIGHCHARTS_PRESETS } from '../src/highcharts-options.ts'
@@ -95,9 +96,12 @@ try {
     await reopened.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'highcharts-editor.png'),fullPage:true})
   }
   // Real OOXML caches through the converter and the actual offline shell.
-  const pptx = await convertPptx(await chartFixture())
+  const importedPptx = await convertPptx(await chartFixture())
+  const exportedPptx = await exportPptx(importedPptx.doc)
+  assert.ok(exportedPptx.report.entries.some(e=>e.code==='highcharts-native-chart'))
+  const pptx = await convertPptx(exportedPptx.bytes)
   await p.evaluate(json=>window.bento.loadDoc(json), JSON.stringify(pptx.doc))
-  const pptxChart = p.locator('.ed-stage-scale [data-el-id="s1-9"]')
+  const pptxChart = p.locator('.ed-stage-scale [data-el-id]').filter({has:p.locator('svg.highcharts-root')})
   await pptxChart.locator('svg.highcharts-root').waitFor()
   assert.equal(await pptxChart.locator('.highcharts-series-group .highcharts-point').count(), 2)
   assert.match(await pptxChart.textContent(), /变化趋势/)

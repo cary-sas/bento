@@ -28,6 +28,7 @@ jobs:
           node --test slides/tests/highcharts-data.test.mjs
           node -e "require('./slides/node_modules/esbuild').buildSync({entryPoints:['scripts/test-convert/chart-import.ts'],bundle:true,platform:'node',format:'esm',outfile:'scripts/.chart-import-test.mjs'})"
           node scripts/.chart-import-test.mjs
+          node scripts/test-convert/highcharts-export.ts
           node --test server/import/server.test.mjs
           node scripts/build-modelkeys.mjs --check
           node scripts/build-i18n.mjs --check
