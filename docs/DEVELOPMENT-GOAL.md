@@ -12,6 +12,13 @@
 - PR #5：7 类 Highcharts 原生 PPTX 导出，数值 X 折线、缺失值和双轴组合；Windows/Linux 往返及离线浏览器验收通过。
 - PR #6：跨页图表数据 Morph、相同 Morph ID 配对、结构不匹配时直接显示新图；Windows/Linux 实际几何变化及减少动态效果验收通过。
 
+- PR #7：真实服务端图表上传、下载及离线打开验收，修复 CI 测试入口登记。
+- PR #8：仅打包 Highcharts Core，六类基础图表，直接 SVG 快照和离线栅格化验收。
+
+## 开发范围
+
+用户确认不需要原生移动端客户端。仅开发 Windows/Linux 内网导入服务与浏览器中的 HTML 编辑和展示；不为此安装 Swift 或开发 iOS/Android 客户端。原项目移动端 CI 的结果单独记录，不视为图表或导入服务的验收结果。
+
 ## 当前精简方案
 
 用户已选择仅保留基础图表：移除 highcharts-more、xrange、exporting、accessibility，只打包 Core。

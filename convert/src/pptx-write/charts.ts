@@ -206,6 +206,7 @@ interface SerData {
   color: string
   values: Array<number | null>
   smooth: boolean
+  pointColors?: Array<string | undefined>
 }
 
 function barSer(s: SerData, labels: string[]): XNode {
@@ -214,6 +215,10 @@ function barSer(s: SerData, labels: string[]): XNode {
     x('c:order', { val: s.gi }),
     x('c:tx', undefined, [serNameRef(s.gi, s.name)]),
     x('c:spPr', undefined, [srgbFill(s.color)]),
+    ...(s.pointColors ?? []).flatMap((color, i) => color === undefined ? [] : [
+      x('c:dPt', undefined, [x('c:idx', { val: i }),
+        x('c:spPr', undefined, [srgbFill(hex6(color, s.color))])]),
+    ]),
     x('c:cat', undefined, [strRef(catRange(labels.length), labels)]),
     x('c:val', undefined, [numRef(serRange(s.gi, s.values.length), s.values)]),
   ])
@@ -331,8 +336,9 @@ export function chartExport(
           gi: i,
           name: str(s.name) ?? `Series ${i + 1}`,
           color: colorFor(i),
-          values: (Array.isArray(s.data) ? s.data : []).map(num),
+          values: (Array.isArray(s.data) ? s.data : []).map(p => num(native && p && typeof p === 'object' ? dict(p).value : p)),
           smooth: s.smooth === true,
+          pointColors: native ? (Array.isArray(s.data) ? s.data : []).map(p => str(dict(dict(p).itemStyle).color)) : undefined,
         })),
       })
     }
