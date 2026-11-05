@@ -69,7 +69,7 @@ export async function startServer(config = configFromEnv()) {
     jobs.set(key, job)
     await fsp.rm(path.join(dir, 'input.pptx'), { force: true })
   }
-  let active = null, closing = false
+  let active = null, activeDone = Promise.resolve(), closing = false
   const publicJob = (job) => ({ id: job.id, name: job.name, state: job.state, createdAt: job.createdAt,
     expiresAt: job.finishedAt ? job.finishedAt + config.ttlMs : null, error: job.error,
     download: job.state === 'done' ? `/api/jobs/${job.id}/html` : null,
@@ -99,6 +99,8 @@ export async function startServer(config = configFromEnv()) {
       path.join(job.dir, 'report.json'), String(config.maxInputMb), String(config.maxUnpackedMb)],
     { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     active = child
+    let finish
+    activeDone = new Promise((resolve) => { finish = resolve })
     let diagnostic = '', timedOut = false
     child.stderr.on('data', (b) => { diagnostic = (diagnostic + b.toString()).slice(-8000) })
     child.on('error', (e) => { diagnostic = e.message })
@@ -114,6 +116,7 @@ export async function startServer(config = configFromEnv()) {
         await fsp.rm(path.join(job.dir, name), { force: true }).catch(() => {})
       await persist(job).catch((e) => console.error('Could not save job state:', e.message))
       active = null
+      finish()
       pump()
     })
   }
@@ -226,7 +229,13 @@ export async function startServer(config = configFromEnv()) {
     async close() {
       closing = true; clearInterval(interval)
       const current = active
-      if (current) { const stopped = new Promise((resolve) => current.once('close', resolve)); current.kill('SIGKILL'); await stopped }
+      if (current) {
+        // The close event may already have fired while its async cleanup is
+        // still running. Wait for that cleanup, not a second close event.
+        const stopped = activeDone
+        if (current.exitCode === null && current.signalCode === null) current.kill('SIGKILL')
+        await stopped
+      }
       server.closeAllConnections()
       await new Promise((resolve, reject) => server.close((e) => e ? reject(e) : resolve()))
       await fsp.rm(runtime, { recursive: true, force: true })
