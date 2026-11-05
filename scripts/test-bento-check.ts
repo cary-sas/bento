@@ -80,6 +80,7 @@ console.log('the starter deck\n')
 const t0 = Date.now()
 const starter = run([shell, '--json'])
 const starterMs = Date.now() - t0
+if (starter.code !== 0) console.error('Starter check diagnostic:', starter.err, starter.out)
 ok(starter.code === 0, `exits 0 on the starter deck with --fail-on error (exit ${starter.code})`)
 let sj: any = null
 try { sj = JSON.parse(starter.out) } catch {}
@@ -108,6 +109,7 @@ ok(!!off, 'the off-canvas rect is named')
 ok(over?.slide === 's1' && off?.slide === 's1', 'both carry the slide id')
 ok(j?.shown === 1 && j?.slides === 3, 'the hidden slide and the state slide are not shown')
 const r2 = run([p, '--fail-on', 'error'])
+if (r2.code !== 0) console.error('Human check diagnostic:', r2.err, r2.out)
 ok(r2.code === 0, `the same deck exits 0 with --fail-on error (warnings only) (exit ${r2.code})`)
 ok(/warning text-overflow \[t1\]/.test(r2.out) && /out-of-canvas \[r1\]/.test(r2.out), 'the human summary lists both with their ids')
 
