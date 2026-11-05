@@ -14,8 +14,8 @@ comment near the top of every built shell and every saved Bento document.
 - License: Highsoft license terms, https://www.highcharts.com/license.
 - This dependency is **not MIT-licensed**. The fork owner's organization has a
   commercial license; deployment and distribution must follow that agreement.
-- Core, highcharts-more, xrange, exporting and accessibility are bundled in
-  the single HTML shell. No CDN or external export service is needed.
+- Only Highcharts Core is bundled in the single HTML shell. No optional
+  modules, Highstock, CDN or external export service are included.
 
 ### reveal.js
 - License: MIT

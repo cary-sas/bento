@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const it: Catalog = {
+  "CSV import supports column, bar, line, area, scatter and pie charts. Select one of these types first.": "L’importazione CSV supporta colonne, barre, linee, aree, dispersione e torte. Seleziona prima uno di questi tipi.",
   "This Highcharts edition is updated from your internal server.": "Questa edizione Highcharts si aggiorna dal server interno.",
   "Renderer": "Motore grafico",
   "Import CSV": "Importa CSV",

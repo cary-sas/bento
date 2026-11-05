@@ -1521,7 +1521,7 @@ export class PropsPanel {
         })
         this.mutate(el.id, (e) => { const c = e as ChartElement; c.option = parsed; delete c.source }, true)
         this.toast(t('CSV data applied'))
-      } catch (error) { status.textContent = error instanceof Error ? error.message : String(error) }
+      } catch (error) { status.textContent = t(error instanceof Error ? error.message : String(error)) }
     })
     this.host.append(file, csv)
     this.row('First row contains headers', header)

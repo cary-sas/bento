@@ -40,6 +40,20 @@ try {
     assert.doesNotMatch(await node.textContent(),/Highcharts:|undefined|NaN/)
     console.log(`Rendered ${type}`)
   }
+  const raster = await p.locator('.ed-stage-scale svg.highcharts-root').evaluate(async svg=>{
+    const xml=new XMLSerializer().serializeToString(svg)
+    const url=URL.createObjectURL(new Blob([xml],{type:'image/svg+xml'}))
+    try {
+      const image=new Image();image.src=url;await image.decode()
+      const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight
+      const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0)
+      const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data
+      let ink=0
+      for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>0&&(pixels[i]<200||pixels[i+1]<200||pixels[i+2]<200))ink++
+      return {width:canvas.width,height:canvas.height,ink}
+    } finally { URL.revokeObjectURL(url) }
+  })
+  assert.ok(raster.width>0&&raster.height>0&&raster.ink>500,'Core SVG snapshot decodes and rasterizes without exporting')
   await p.evaluate(json=>window.bento.loadDoc(json),JSON.stringify(doc(HIGHCHARTS_PRESETS.column())))
   await p.locator('.ed-stage-scale [data-el-id="chart"]').click({position:{x:25,y:25}})
   await p.getByLabel('CSV data',{exact:true}).waitFor()

@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Adapter code is MIT. Highcharts itself uses the Highsoft commercial license.
 import Highcharts from 'highcharts/es-modules/masters/highcharts.src.js'
-import 'highcharts/es-modules/masters/highcharts-more.src.js'
-import 'highcharts/es-modules/masters/modules/xrange.src.js'
-import 'highcharts/es-modules/masters/modules/exporting.src.js'
-import 'highcharts/es-modules/masters/modules/accessibility.src.js'
 interface ChartLike { w: number; h: number; option: Record<string, unknown> }
 import { chartTransitionData } from './chart-transition'
 import { cssDecodeIdentEscapes } from '../../kernel/src/svgsafe.ts'
@@ -40,7 +36,7 @@ export function safeHighchartsOptions(input: unknown): Record<string, any> {
   return result
 }
 
-function options(el: ChartLike, live: boolean): any {
+function options(el: ChartLike): any {
   const o = safeHighchartsOptions(el.option)
   const w = Math.max(1, Math.min(16000, Number(el.w) || 1)), h = Math.max(1, Math.min(16000, Number(el.h) || 1))
   return Highcharts.merge({ chart: { zooming: { type: 'xy' } }, title: { text: null }, credits: { enabled: false },
@@ -48,8 +44,7 @@ function options(el: ChartLike, live: boolean): any {
     xAxis: {}, yAxis: { title: { text: null } },
   }, o, {
     chart: { width: w, height: h, animation: false, reflow: false, styledMode: false },
-    accessibility: { enabled: live },
-    exporting: { enabled: false, local: true, fallbackToExportServer: false, url: '', libURL: '' },
+    credits: { enabled: false }, accessibility: { enabled: false },
     plotOptions: { series: { animation: false } }, tooltip: { useHTML: false, outside: false },
   })
 }
@@ -65,8 +60,10 @@ export function highchartsSnapshot(el: ChartLike): string {
   document.body.append(host)
   let chart: Highcharts.Chart | undefined
   try {
-    chart = Highcharts.chart(host, options(el, false))
-    const svg = (chart as Highcharts.Chart & { getSVG(): string }).getSVG()
+    chart = Highcharts.chart(host, options(el))
+    // Core already renders a complete inline SVG. Capture it directly; the
+    // exporting module and its clone chart are unnecessary for snapshots.
+    const svg = new XMLSerializer().serializeToString(chart.renderer.box)
     if (snapshots.size >= 60) snapshots.clear()
     snapshots.set(key, svg)
     return svg
@@ -84,8 +81,8 @@ export function highchartsSnapshot(el: ChartLike): string {
 export function mountHighcharts(el: ChartLike, host: HTMLElement, fromOption?: Record<string, unknown>, durationMs = 600): () => void {
   host.innerHTML = ''
   try {
-    const target = options(el, true)
-    const before = fromOption && chartTransitionData(options({ ...el, option: fromOption }, true), target)
+    const target = options(el)
+    const before = fromOption && chartTransitionData(options({ ...el, option: fromOption }), target)
     const initial = before ? Highcharts.merge(target, { series: target.series.map((s: any, i: number) => ({ ...s, data: before[i] })) }) : target
     const chart = Highcharts.chart(host, initial)
     let disposed = false

@@ -12,6 +12,11 @@
 - PR #5：7 类 Highcharts 原生 PPTX 导出，数值 X 折线、缺失值和双轴组合；Windows/Linux 往返及离线浏览器验收通过。
 - PR #6：跨页图表数据 Morph、相同 Morph ID 配对、结构不匹配时直接显示新图；Windows/Linux 实际几何变化及减少动态效果验收通过。
 
+## 当前精简方案
+
+用户已选择仅保留基础图表：移除 highcharts-more、xrange、exporting、accessibility，只打包 Core。
+提供柱形、条形、折线、面积、饼图和散点图；SVG 快照直接读取 Core 渲染结果。
+
 ## 持续回归覆盖
 
 - TypeScript、单文件构建、文档块 splice gate、模型与 i18n 一致性。

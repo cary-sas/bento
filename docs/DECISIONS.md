@@ -12223,3 +12223,13 @@ options and remote export endpoints stay disabled. Native Highcharts PPTX
 exports use an explicit complete-point data-table fallback. Slides keeps its
 storage identity for autosave/host interoperability; its update facade disables
 upstream checks so ordinary upstream updates cannot remove its renderer.
+
+## 2026-11-05 — Fork: ship only Highcharts Core
+
+The fork owner explicitly selected the basic-chart edition after reviewing the
+optional-module roles. Remove highcharts-more, xrange, exporting and accessibility
+imports; no Highstock code is included. Keep column/bar, line, area, pie and
+scatter presets. The static renderer serializes Core's own SVG rather than
+loading exporting solely for getSVG. This supersedes the earlier optional-module
+selection for this fork. Special-chart presets and CSV entry points are removed;
+unsupported native PPTX configurations can still use the complete-data fallback.

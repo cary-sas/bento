@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const de: Catalog = {
+  "CSV import supports column, bar, line, area, scatter and pie charts. Select one of these types first.": "Der CSV-Import unterstützt Säulen-, Balken-, Linien-, Flächen-, Streu- und Kreisdiagramme. Wählen Sie zuerst einen dieser Typen.",
   "This Highcharts edition is updated from your internal server.": "Diese Highcharts-Ausgabe wird über Ihren internen Server aktualisiert.",
   "Renderer": "Diagramm-Engine",
   "Import CSV": "CSV importieren",

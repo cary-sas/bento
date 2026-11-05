@@ -1,8 +1,8 @@
 # bento/slides — Highcharts edition
 
 本 Fork 的幻灯片图表**全部使用 Highcharts 13.1.1**，不提供引擎切换。
-Highcharts Core、highcharts-more、xrange、exporting 和 accessibility 模块直接打包进 HTML，
-不依赖 CDN；柱状图、条形图、折线图、面积图、饼图、散点图、瀑布图、箱线图、区间图可从面板选择。
+仅将 Highcharts Core 打包进 HTML，不依赖 CDN。未打包 highcharts-more、xrange、exporting、accessibility 或 Highstock。
+面板保留柱状图、条形图、折线图、面积图、饼图和散点图；不再提供瀑布图、箱线图或区间图。
 代码适配层仍为 MIT；Highcharts 受 Highsoft 的许可约束，使用公司已有商业许可部署。
 
 ## 部署和升级
@@ -76,13 +76,13 @@ Week,Subject 01,Subject 02
 - 空白、NA、N/A、null 为缺失值 `null`；其他非数值数据报错，不会自动变成 0。
 - 百分数字符串保留百分数数值：`35%` 导入为 `35`，不是 `0.35`。
 - 文件上限 2 MiB、最多 2000 数据行/50 列；总值数量还受文档配置大小限制。
-- 饼图要求两列（名称、数值）。箱线图和区间图的多维点使用原生 JSON 编辑。
+- 饼图要求两列（名称、数值）。JSON 配置也仅支持 Core 自带图表，不加载附加模块。
 - CSV 应用后解除原来的表格联动，避免表格更新覆盖 CSV。图表的其他配置尽量保留。
 - 原始 CSV 文件不随文档保存，解析后的数据随单个 HTML 保存，接收方无需 CSV 文件。
 
 ## 显示和导出
 
-编辑画布、缩略图、打印、图片导出用 Highcharts SVG 快照。
+编辑画布、缩略图、打印、图片导出直接使用 Core 渲染的 SVG 快照，不依赖 exporting 模块。
 演示模式使用交互实例，支持 tooltip、图例和拖动选择缩放区域；离开页面即销毁实例。
 跨页 Morph 支持匹配图表的数据过渡：类型、点数、分类/坐标及系列配置一致时，数值随演示设置的 Morph 时长变化。
 可使用相同元素 ID 或 Morph ID 配对；结构或缺失位置改变时直接显示新图表。开启减少动态效果时直接显示最终数据。

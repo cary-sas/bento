@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const zhHant: Catalog = {
+  "CSV import supports column, bar, line, area, scatter and pie charts. Select one of these types first.": "CSV 支援柱形、條形、折線、面積、散佈和圓餅圖。請先選擇其中一種類型。",
   "This Highcharts edition is updated from your internal server.": "此 Highcharts 版本請透過內網伺服器更新。",
   "Renderer": "繪圖引擎",
   "Import CSV": "匯入 CSV",

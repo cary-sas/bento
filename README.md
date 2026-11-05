@@ -57,7 +57,7 @@ company keeps its servers on. Bento takes the other path:
 | **Morph presenting** | Elements that share an id animate between slides — position, size, color, even gradients. Duplicate a slide, rearrange, and the motion designs itself. |
 | **Live collaboration** | E2EE (AES-GCM) with keys that live in your file, never on a server. The file itself is the invitation: anyone who opens a copy joins. Offline edits merge back precisely — our own CRDT, character-level text merging included. |
 | **A blind relay** | The optional sync relay ([`server/sync-worker/`](server/sync-worker/)) stores ciphertext and learns nothing. Read the source; it's about one file. |
-| **Charts, built in** | Highcharts with native JSON and local CSV import: column, bar, line, area, pie, scatter, waterfall, boxplot and xrange; live tooltips, legends and zoom. |
+| **Charts, built in** | Highcharts with native JSON and local CSV import: column, bar, line, area, pie and scatter; live tooltips, legends and zoom. |
 | **Designed for AI** | The document is plain JSON in the file, so agents edit `.bento.html` files in place and chatbots round-trip the JSON (`window.bento.loadDoc`). See [docs/agents.md](docs/agents.md). |
 | **Signed self-updates** | Releases are ECDSA-signed and offered in-app. Updating writes a *new* file — the old one stays as your rollback. No server ever touches your documents. |
 | **Everything else** | Speaker view, comments, layouts, hidden interactive states, hover reveals, motion paths, PDF export, page sizes, 8 UI languages — in a ~560 KB shell. |
