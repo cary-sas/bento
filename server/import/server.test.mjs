@@ -67,6 +67,50 @@ try {
       assert.equal((await fs.readdir(path.join(cfg.dataDir, 'jobs'))).length, 0)
     } finally { await app.close() }
   })
+  await test('shutdown waits for cleanup after the worker close event has already fired', { timeout: 15000 }, async () => {
+    const app = await launch()
+    const originalRm = fs.rm
+    let release, entered
+    const blocked = new Promise(resolve => { entered = resolve })
+    const resume = new Promise(resolve => { release = resolve })
+    fs.rm = async (target, options) => {
+      const result = await originalRm(target, options)
+      if (String(target).startsWith(app.config.dataDir) && path.basename(String(target)) === 'input.pptx') {
+        entered()
+        await resume
+      }
+      return result
+    }
+    let closing
+    try {
+      const uploaded = await post(app)
+      assert.equal(uploaded.status, 202)
+      await blocked
+      let closed = false
+      closing = app.close().then(() => { closed = true })
+      await wait(30)
+      assert.equal(closed, false, 'shutdown must wait for persisted job cleanup')
+      release()
+      let timeout
+      try {
+        await Promise.race([closing, new Promise((_, reject) => {
+          timeout = setTimeout(() => reject(new Error('shutdown missed the worker close event')), 3000)
+        })])
+      } finally { clearTimeout(timeout) }
+      const jobs = await fs.readdir(path.join(app.config.dataDir, 'jobs'))
+      const state = JSON.parse(await fs.readFile(path.join(app.config.dataDir, 'jobs', jobs[0], 'job.json'), 'utf8'))
+      assert.equal(state.state, 'done')
+    } finally {
+      release()
+      fs.rm = originalRm
+      if (!closing) await app.close()
+      else if (app.server.listening) {
+        // A regression must fail promptly instead of retaining the HTTP server.
+        app.server.closeAllConnections()
+        await new Promise(resolve => app.server.close(resolve))
+      }
+    }
+  })
   await test('authentication, HttpOnly session and origin checks', async () => {
     const app = await launch({ token: 'test-password-with-enough-length' })
     try {
