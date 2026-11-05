@@ -421,7 +421,7 @@ export async function convertPptx(bytes: Uint8Array): Promise<ConvertResult> {
         if (frame) deps.frame = frame
         if (groupId) deps.groupId = groupId
         const res = shapeFrom(el, ctx, deps)
-        if (res) elements.push(res.shape)
+        if (res) elements.push(res.shape, ...(res.extraShapes ?? []))
         if (local === 'cxnSp') return // connectors carry no txBody
 
         // an untitled package is named by its first title placeholder's text

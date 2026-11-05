@@ -28,6 +28,7 @@ jobs:
           node --test slides/tests/highcharts-data.test.mjs slides/tests/chart-transition.test.mjs slides/tests/highcharts-core.test.mjs
           node scripts/test-chart-import.mjs
           node scripts/test-convert/highcharts-export.ts
+          node scripts/test-convert/geometry.ts
           node --test server/import/server.test.mjs
           node scripts/build-modelkeys.mjs --check
           node scripts/build-i18n.mjs --check
