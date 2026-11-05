@@ -35,6 +35,7 @@
 // see ShapeResult.textGroupId. The morph/identity pass may rewrite ids later;
 // within one slide's conversion they are stable.
 
+import { customGeometry, type GeometryPath } from './geometry.ts'
 import { NS, kid, kids, attr, intAttr, textOf, descendants, type XElem } from './xml.ts'
 import {
   EMU_PER_PX,
@@ -96,6 +97,7 @@ export interface ShapeDeps {
 
 export interface ShapeResult {
   shape: OutShape
+  extraShapes?: OutShape[]
   /**
    * Set when the sp ALSO carries text (the box-with-text split): the
    * integrator must emit the text element with THIS groupId, placed
@@ -573,10 +575,13 @@ export function shapeFrom(sp: XElem, ctx: InheritCtx, deps: ShapeDeps): ShapeRes
 
   const geom = chainGeom(sp, ctx)
   let prst = geom && geom.local === 'prstGeom' ? attr(geom, 'prst') ?? 'rect' : 'rect'
+  let custom: GeometryPath[] | undefined
   if (geom && geom.local === 'custGeom') {
-    // 0/6 in the census — approximated loudly, never parsed
-    ctx.report.add('approximated', 'shape-approximated', where,
-      'a:custGeom approximated as a rectangle')
+    try { custom = customGeometry(geom, w, h, flipH, flipV) }
+    catch (error) {
+      ctx.report.add('approximated', 'shape-approximated', where,
+        `custom geometry could not be preserved: ${error instanceof Error ? error.message : 'invalid path'} — rectangle retained`)
+    }
   }
   const adj = adjOf(geom)
 
@@ -644,7 +649,12 @@ export function shapeFrom(sp: XElem, ctx: InheritCtx, deps: ShapeDeps): ShapeRes
           : prst === 'rightArrow' ? 'arrow'
             : undefined
 
-  if (kindHint) {
+  if (custom) {
+    shape.shape = 'path'
+    shape.d = custom[0].d
+    shape.pathBox = [0, 0, w, h]
+    flipConsumed = true
+  } else if (kindHint) {
     shape.shape = kindHint
     if (prst === 'roundRect') {
       const a = pin(0, adj.get('adj') ?? 16667, 50000)
@@ -711,6 +721,33 @@ export function shapeFrom(sp: XElem, ctx: InheritCtx, deps: ShapeDeps): ShapeRes
     const gid = deps.groupId ?? `s${deps.slideIndex}-${spId}-g`
     shape.groupId = gid
     out.textGroupId = gid
+  }
+  if (custom) {
+    if (sp.local === 'cxnSp') {
+      attachConnectorEnds(sp, shape, ctx, deps, where)
+      if (stroke.start !== 'none' || stroke.end !== 'none') ctx.report.add('approximated', 'connector-tip-dropped', where,
+        'custom-path connector arrowheads are not rendered on bento path shapes')
+    }
+    const textRect = geom && kid(geom, NS.a, 'rect')
+    if (textRect && hasTextContent(sp) &&
+      (!['0','l'].includes(attr(textRect,'l') ?? '') || !['0','t'].includes(attr(textRect,'t') ?? '') ||
+       !['r','w'].includes(attr(textRect,'r') ?? '') || !['b','h'].includes(attr(textRect,'b') ?? ''))) {
+      ctx.report.add('approximated', 'custom-text-inset', where,
+        'custom geometry text rectangle is not yet mapped; text uses the shape frame and text-body insets')
+    }
+    const base = { ...shape }
+    const groupId = deps.groupId ?? `s${deps.slideIndex}-${spId}-g`
+    const layers = custom.map((path, i): OutShape => {
+      const layer = { ...base, id: i ? `${base.id}-path-${i}` : base.id, d: path.d, groupId }
+      if (!path.fill) { layer.fill = 'transparent'; delete layer.fillGradient }
+      if (!path.stroke) { layer.stroke = 'transparent'; layer.strokeWidth = 0 }
+      return layer
+    })
+    out.shape = layers[0]
+    out.extraShapes = layers.slice(1)
+    if (hasTextContent(sp)) out.textGroupId = groupId
+    if (layers.length > 1 && shadow) ctx.report.add('approximated', 'custom-path-shadow', where,
+      'multi-path shape shadow is applied per path rather than to the combined silhouette')
   }
   return out
 }

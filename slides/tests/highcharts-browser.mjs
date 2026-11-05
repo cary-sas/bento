@@ -7,6 +7,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url'
 import { exportPptx } from '../../convert/src/pptx-write/index.ts'
 import { convertPptx } from '../../convert/src/pptx.ts'
 import { chartFixture } from '../../scripts/test-convert/_chart-import-fixtures.ts'
+import { geometryFixture } from '../../scripts/test-convert/_geometry-fixtures.ts'
 import { HIGHCHARTS_PRESETS } from '../src/highcharts-options.ts'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
 const root = fileURLToPath(new URL('../../', import.meta.url))
@@ -126,6 +127,32 @@ try {
   await convertedPage.locator('.ed-stage-scale svg.highcharts-root').waitFor()
   assert.deepEqual(await convertedPage.evaluate(()=>window.bento.doc.slides[0].elements[0].option.series[0].data),[12,null,-4.25])
   if(process.env.BENTO_SCREENSHOTS) await convertedPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'pptx-imported-chart.png'),fullPage:true})
+  // Custom PowerPoint geometry stays editable vector data, not an image.
+  const geometry = await convertPptx(await geometryFixture())
+  const geometryReport = await p.evaluate(json=>window.bento.loadDoc(json),JSON.stringify(geometry.doc))
+  assert.notEqual(geometryReport,false)
+  assert.deepEqual(geometryReport.dropped,[])
+  const curve = p.locator('.ed-stage-scale [data-el-id="s1-20"] svg path')
+  await curve.waitFor()
+  assert.match(await curve.getAttribute('d'),/C100 0 300 0 400 100/)
+  assert.ok((await curve.boundingBox()).width>100)
+  // Change one path's color and the separate text; both must survive saving.
+  const edited=await p.evaluate(()=>JSON.parse(JSON.stringify(window.bento.doc)))
+  edited.slides[0].elements[0].fill='#8844cc'
+  edited.slides[0].elements.find(e=>e.type==='text').html='<p>独立编辑成功</p>'
+  await p.evaluate(json=>window.bento.loadDoc(json),JSON.stringify(edited))
+  const geometryFile=path.join(temp,'geometry.bento.html')
+  await fs.writeFile(geometryFile,await p.evaluate(()=>window.bento.serialize()))
+  const geometryPage=await ctx.newPage()
+  geometryPage.on('pageerror',e=>errors.push(e.message))
+  await geometryPage.goto(pathToFileURL(geometryFile).href)
+  await geometryPage.locator('.ed-stage-scale [data-el-id="s1-20"] svg path').waitFor()
+  const savedGeometry=await geometryPage.evaluate(()=>window.bento.doc.slides[0].elements)
+  assert.equal(savedGeometry.length,3)
+  assert.equal(savedGeometry[0].fill,'#8844cc')
+  assert.match(savedGeometry[2].html,/独立编辑成功/)
+  assert.equal(savedGeometry[1].stroke,'#FF3300')
+  if(process.env.BENTO_SCREENSHOTS) await geometryPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'editable-geometry.png'),fullPage:true})
   // Measure actual rendered column heights over time; a target option alone
   // would also pass if the data merely jumped to its final value.
   await p.bringToFront()
