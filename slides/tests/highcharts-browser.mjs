@@ -148,10 +148,11 @@ try {
   await p.getByRole('button',{name:'Present in this tab',exact:true}).click()
   await p.locator('.bento-present-overlay section.present [data-highcharts-chart]').waitFor()
   await p.keyboard.press('ArrowRight')
+  await p.locator('.bento-present-overlay section.present [data-el-id="next-chart"][data-highcharts-chart]').waitFor()
   const reduced=p.locator('.bento-present-overlay section.present [data-el-id="next-chart"] .highcharts-series-group .highcharts-point').first()
   await reduced.waitFor()
   const reducedHeight=(await reduced.boundingBox()).height
-  assert.ok(Math.abs(reducedHeight-heights.at(-1))<3,'reduced motion starts at the final geometry')
+  assert.ok(Math.abs(reducedHeight-heights.at(-1))<3,`reduced motion starts at the final geometry: ${reducedHeight} vs ${heights.at(-1)}`)
   await p.keyboard.press('Escape')
   await p.emulateMedia({reducedMotion:'no-preference'})
   assert.deepEqual(errors,[])
