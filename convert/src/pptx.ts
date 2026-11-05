@@ -44,6 +44,8 @@ import {
   parseRels, parseContentTypes, AssetStore, imageFrom, type Rel, type ContentTypes,
 } from './media.ts'
 import { textFrom, type TextDeps } from './text.ts'
+import { tableFrom } from './tables.ts'
+import { chartFrom } from './charts.ts'
 import { shapeFrom, groupChildren, type ShapeDeps, type GroupFrame } from './shapes.ts'
 import {
   EMU_PER_PX, METRIC_SUBSTITUTES, safeFace, cssFace,
@@ -494,17 +496,32 @@ export async function convertPptx(bytes: Uint8Array): Promise<ConvertResult> {
       }
 
       if (local === 'graphicFrame') {
-        // tables and charts are follow-up modules: a placeholder box marks the
-        // spot and the report says so HONESTLY — 'not yet', not 'unsupported'
+        // Internal chart relationships and table grids become editable data.
+        // Missing/unsupported content retains a marked placeholder.
         const where = whereOf(el, n)
         const graphic = kid(el, NS.a, 'graphic')
         const gd = graphic && kid(graphic, NS.a, 'graphicData')
         if (gd && kid(gd, NS.a, 'tbl')) {
-          report.add('dropped', 'table-not-yet', where,
-            'tables are not imported yet (follow-up module) — a placeholder box marks the spot')
+          const table = tableFrom(kid(gd, NS.a, 'tbl')!, frame ?? resolveFrame(el, ctx),
+            `s${n}-${cNvPrIdOf(el)}`, ctx, baseTextDeps, where)
+          if (table) {
+            if (groupId) table.groupId = groupId
+            elements.push(table)
+            return
+          }
         } else if (gd && kids(gd).some((c) => c.ns === NS.c && c.local === 'chart')) {
-          report.add('dropped', 'chart-not-yet', where,
-            'charts are not imported yet (follow-up module) — a placeholder box marks the spot')
+          const ref = kids(gd).find(c => c.ns === NS.c && c.local === 'chart')!
+          const rel = slideRels.get(rIdOf(ref) ?? '')
+          const chartXml = rel && !rel.mode && rel.type.endsWith('/chart') ? xmlOf(parts, rel.target) : undefined
+          if (chartXml) {
+            const chart = chartFrom(chartXml, frame ?? resolveFrame(el, ctx), `s${n}-${cNvPrIdOf(el)}`, ctx, where)
+            if (chart) {
+              if (groupId) chart.groupId = groupId
+              elements.push(chart)
+              return
+            }
+          } else report.add('dropped', 'chart-part-missing', where,
+            'Chart relationship is missing, external or has no internal part — a placeholder marks the chart')
         } else {
           report.add('dropped', 'graphic-dropped', where,
             `graphicFrame content (${gd ? attr(gd, 'uri') ?? 'unknown' : 'empty'}) has no importer — a placeholder box marks the spot`)

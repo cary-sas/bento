@@ -4,6 +4,8 @@ import os from 'node:os'
 import path from 'node:path'
 import assert from 'node:assert/strict'
 import { pathToFileURL, fileURLToPath } from 'node:url'
+import { convertPptx } from '../../convert/src/pptx.ts'
+import { chartFixture } from '../../scripts/test-convert/_chart-import-fixtures.ts'
 import { HIGHCHARTS_PRESETS } from '../src/highcharts-options.ts'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright')
 const root = fileURLToPath(new URL('../../', import.meta.url))
@@ -92,6 +94,20 @@ try {
     await fs.mkdir(process.env.BENTO_SCREENSHOTS,{recursive:true})
     await reopened.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'highcharts-editor.png'),fullPage:true})
   }
+  // Real OOXML caches through the converter and the actual offline shell.
+  const pptx = await convertPptx(await chartFixture())
+  await p.evaluate(json=>window.bento.loadDoc(json), JSON.stringify(pptx.doc))
+  const pptxChart = p.locator('.ed-stage-scale [data-el-id="s1-9"]')
+  await pptxChart.locator('svg.highcharts-root').waitFor()
+  assert.equal(await pptxChart.locator('.highcharts-series-group .highcharts-point').count(), 2)
+  assert.match(await pptxChart.textContent(), /变化趋势/)
+  const convertedFile = path.join(temp,'converted.bento.html')
+  await fs.writeFile(convertedFile,await p.evaluate(()=>window.bento.serialize()))
+  const convertedPage = await ctx.newPage()
+  await convertedPage.goto(pathToFileURL(convertedFile).href)
+  await convertedPage.locator('.ed-stage-scale svg.highcharts-root').waitFor()
+  assert.deepEqual(await convertedPage.evaluate(()=>window.bento.doc.slides[0].elements[0].option.series[0].data),[12,null,-4.25])
+  if(process.env.BENTO_SCREENSHOTS) await convertedPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'pptx-imported-chart.png'),fullPage:true})
   assert.deepEqual(errors,[])
   assert.deepEqual(external,[],'no external request while loading, importing CSV, presenting or saving')
   console.log('Highcharts browser acceptance passed: presets, UTF-8 CSV file, pasted XY, headers, native JSON, tooltip and offline save/open.')
