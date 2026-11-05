@@ -203,10 +203,11 @@ if (!['script', 'template', 'textplain'].includes(carrier)) throw new Error(`--c
 const inflateMode = flag('inflate', 'js')
 if (!['native', 'auto', 'js'].includes(inflateMode)) throw new Error(`--inflate must be native, auto or js, got ${inflateMode}`)
 const INFLATE_JS = inflateMode === 'native' ? '' : (() => {
-  const { execFileSync } = createRequire(import.meta.url)('node:child_process')
+  const { transformSync } = createRequire(join(process.cwd(), 'package.json'))('esbuild')
   const src = readFileSync(new URL('./lib/inflate-raw.js', import.meta.url), 'utf8').replace(/^export function/m, 'function')
-  const esbuild = join(process.cwd(), 'node_modules/.bin/esbuild')
-  const min = execFileSync(esbuild, ['--minify', '--format=esm', '--target=es2017'], { input: src + '\nexport { inflateRaw }', encoding: 'utf8' })
+  const { code: min } = transformSync(src + '\nexport { inflateRaw }', {
+    minify: true, format: 'esm', target: 'es2017',
+  })
   // esbuild renames the function; the export clause says what it became
   const m = /export\s*\{\s*(\w+)(?:\s+as\s+inflateRaw)?\s*\};?\s*$/.exec(min)
   if (!m) throw new Error('inflater: export clause not found after minify')
