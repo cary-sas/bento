@@ -16,4 +16,8 @@ test('topology, coordinates, names, null gaps and styles cannot interpolate acro
   assert.equal(chartTransitionData(chart([[0,1],[5,2]]),chart([[1,10],[5,20]])),undefined)
   assert.equal(chartTransitionData(chart([{name:'A',y:1}]),chart([{name:'B',y:2}])),undefined)
   assert.equal(chartTransitionData({...source,chart:{type:'boxplot'}},{...source,chart:{type:'boxplot'}}),undefined)
+  for(const extra of [{keys:['y','x']},{dataSorting:{enabled:true}}]) {
+    const sorted={...source,series:[{...source.series[0],...extra}]}
+    assert.equal(chartTransitionData(sorted,sorted),undefined)
+  }
 })

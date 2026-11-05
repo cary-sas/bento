@@ -114,6 +114,7 @@ try {
   if(process.env.BENTO_SCREENSHOTS) await convertedPage.screenshot({path:path.join(process.env.BENTO_SCREENSHOTS,'pptx-imported-chart.png'),fullPage:true})
   // Measure actual rendered column heights over time; a target option alone
   // would also pass if the data merely jumped to its final value.
+  await p.bringToFront()
   const morph = doc({chart:{type:'column'},xAxis:{categories:['A','B','C']},yAxis:{min:0,max:25},
     legend:{enabled:false},series:[{name:'Value',data:[2,4,3]}]})
   morph.present={morphSeconds:2}

@@ -25,6 +25,8 @@ export function chartTransitionData(from: Options, to: Options): unknown[][] | u
   const data: unknown[][] = []
   for (let i=0;i<before.length;i++) {
     const old = object(before[i]), next = object(after[i])
+    if (old.keys || next.keys || old.dataSorting?.enabled || next.dataSorting?.enabled ||
+        from.plotOptions?.series?.dataSorting?.enabled || to.plotOptions?.series?.dataSorting?.enabled) return undefined
     const oldType=old.type??a.type??'line', nextType=next.type??b.type??'line'
     if (oldType!==nextType || !supported.has(nextType)) return undefined
     const {data:oldData,...oldStyle}=old, {data:nextData,...nextStyle}=next
