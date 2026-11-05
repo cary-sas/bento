@@ -837,7 +837,7 @@ export function renderElement(el: SlideElement, doc: BentoDoc, opts: RenderOpts 
       break
     }
     case 'chart': {
-      // Static SVG snapshot everywhere; present mode swaps in a live ECharts
+      // Static SVG snapshot everywhere; present mode swaps in a live Highcharts
       // instance (mountLiveCharts) for tooltips/zoom. Kept as innerHTML so
       // print and thumbnails need no chart runtime at render time.
       node.dataset.chart = '1'

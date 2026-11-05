@@ -1364,7 +1364,7 @@ export function startPresentation(
     }
     wireHoverFocus(doc.slides[toIdx], to)
     if (from) disposeLiveCharts(doc.slides[fromIdx], from)
-    mountLiveCharts(doc.slides[toIdx], to, morphing ? doc.slides[fromIdx] : undefined)
+    mountLiveCharts(doc.slides[toIdx], to, morphing && !reduceMotion ? doc.slides[fromIdx] : undefined)
     if (from) pauseMediaIn(from)
     startMediaIn(to)
     // Capture where this slide's formula symbols sit WHILE it is on screen —
@@ -1578,8 +1578,8 @@ function pauseMediaIn(section: HTMLElement) {
 
 // --- live charts --------------------------------------------------------------
 
-// Present mode swaps chart snapshots for live ECharts instances (tooltips,
-// dataZoom). Leaving the slide disposes the instance and restores the
+// Present mode swaps chart snapshots for live Highcharts instances (tooltips,
+// legend and zoom). Leaving the slide disposes the instance and restores the
 // snapshot so the section stays presentable in Reveal's viewDistance cache.
 const chartHandles = new WeakMap<HTMLElement, Array<() => void>>()
 
@@ -1590,10 +1590,10 @@ function mountLiveCharts(slide: Slide, section: HTMLElement, fromSlide?: Slide) 
     const node = section.querySelector<HTMLElement>(`[data-el-id="${CSS.escape(el.id)}"]`)
     if (!node) continue
     // a matching chart on the other side of a morph: animate its data over
-    const fromEl = fromSlide?.elements.find((e) => e.id === el.id && e.type === 'chart')
+    const fromEl = fromSlide?.elements.find((e) => morphKey(e) === morphKey(el) && e.type === 'chart')
     // the engine writes option colours into svg paint: hand it a fetch-free copy
     const live = { ...el, option: fetchFreeOption(el.option) }
-    const dispose = mountChart(live, node, fromEl && fromEl.type === 'chart' ? fetchFreeOption(fromEl.option) : undefined)
+    const dispose = mountChart(live, node, fromEl && fromEl.type === 'chart' ? fetchFreeOption(fromEl.option) : undefined, MORPH_DURATION * 1000)
     handles.push(() => {
       dispose()
       node.innerHTML = chartSnapshotSvg(live)
