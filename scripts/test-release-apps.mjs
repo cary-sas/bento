@@ -56,7 +56,12 @@ for (const [key, app] of Object.entries(APPS)) {
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   const build = pkg.scripts?.['build:single'] ?? ''
   ok(!!build, `${key}: has a build:single script`)
-  ok(build.includes(app.shell),
+  // Windows builds delegate to a Node entry point rather than a shell mv.
+  // Inspect only a directly invoked, existing repository script.
+  const entry = build.match(/^node\s+(\.\.\/scripts\/[\w-]+\.mjs)(?:\s|$)/)?.[1]
+  const entryPath = entry && join(root, app.dir, entry)
+  const buildSource = entryPath && existsSync(entryPath) ? readFileSync(entryPath, 'utf8') : build
+  ok(buildSource.includes(app.shell),
     `${key}: build:single produces ${app.shell} (the name the release stages)`)
 
   // appId is the silent one — pin it to the app's own configureApp() call.
