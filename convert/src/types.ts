@@ -80,7 +80,7 @@ export interface OutTable extends OutElementBase {
 
 export interface OutChart extends OutElementBase {
   type: 'chart'
-  preset: 'bar' | 'line' | 'pie' | 'scatter'
+  preset: 'column' | 'bar' | 'line' | 'area' | 'pie' | 'scatter'
   option: Record<string, unknown>
 }
 

@@ -353,7 +353,7 @@ export function fxConnectors(): Promise<Uint8Array> {
  *  "not yet"), speaker notes (sldImg/sldNum placeholders skipped), a hidden
  *  second slide carrying an mc:AlternateContent whose Fallback must be taken
  *  exactly once, and NO transition anywhere (emitted 'none', never 'fade').
- *  Expected report: table-not-yet + chart-not-yet. */
+ *  Expected report: table-import-unsupported + chart-part-missing. */
 export function fxStructure(): Promise<Uint8Array> {
   const gframe = (id: number, name: string, y: number, data: string): string =>
     `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="${name}"/>` +

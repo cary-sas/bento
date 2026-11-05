@@ -241,7 +241,7 @@ const byId = (r: ConvertResult, slide: number, id: string) =>
     'structure: mc:AlternateContent resolves to its Fallback, imported ONCE')
   ok(!s2.some((e) => e.id === 's2-20'),
     'structure: NEGATIVE — the mc:Choice content (which a blind walk double-imports) is absent')
-  reportIs(r, ['table-not-yet', 'chart-not-yet'], 'structure')
+  reportIs(r, ['table-import-unsupported', 'chart-part-missing'], 'structure')
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`)

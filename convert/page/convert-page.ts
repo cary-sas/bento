@@ -146,8 +146,10 @@ async function run() {
 // written for developers; codes listed here are said plainly instead, and
 // any code not listed falls back to the engine's own words, never silence.
 const PLAIN: Record<string, string> = {
-  'table-not-yet': 'Tables are not converted yet. A placeholder box marks where each one was.',
-  'chart-not-yet': 'Charts are not converted yet. A placeholder box marks where each one was.',
+  'table-imported': 'Tables are editable. Office styling and per-cell font sizes may differ.',
+  'table-merges-flattened': 'Merged cells are separated into a grid; their text is kept in the original anchor cell.',
+  'table-row-heights-equalized': 'Table rows use equal heights instead of their original individual heights.',
+  'chart-imported-from-cache': 'Charts are editable Highcharts using the data stored in the presentation. Workbook formulas are not recalculated, and styling may differ.',
   'text-needs-refit': 'Some text boxes may need resizing, because this device’s fonts differ slightly from the original’s.',
   'font-substituted': 'Some fonts were not included in the file, so a similar font is used instead.',
   'paragraph-spacing-dropped': 'Extra space between paragraphs is not kept.',
