@@ -152,7 +152,16 @@ try {
   const reduced=p.locator('.bento-present-overlay section.present [data-el-id="next-chart"] .highcharts-series-group .highcharts-point').first()
   await reduced.waitFor()
   const reducedHeight=(await reduced.boundingBox()).height
-  assert.ok(Math.abs(reducedHeight-heights.at(-1))<3,`reduced motion starts at the final geometry: ${reducedHeight} vs ${heights.at(-1)}`)
+  // Independent chart layouts can differ a few pixels in plot padding. The
+  // reduced-motion chart must start near the final size AND stay stationary.
+  assert.ok(Math.abs(reducedHeight-heights.at(-1))/heights.at(-1)<0.05,`reduced motion starts at the final geometry: ${reducedHeight} vs ${heights.at(-1)}`)
+  const stationary = await reduced.evaluate(async point=>{
+    const start=point.getBoundingClientRect().height
+    await new Promise(resolve=>setTimeout(resolve,300))
+    return Math.abs(point.getBoundingClientRect().height-start)
+  })
+  assert.ok(stationary<1,`reduced-motion column remains stationary (${stationary}px)`)
+
   await p.keyboard.press('Escape')
   await p.emulateMedia({reducedMotion:'no-preference'})
   assert.deepEqual(errors,[])
