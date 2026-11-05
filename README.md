@@ -16,11 +16,10 @@ nothing: the file *is* the software.
 feature tour. Or grab a designed template from the
 [gallery](https://bento.page/) and make it yours.
 
-**Download the app:** grab the single `Bento_Slides.bento.html` from the
-[GitHub Releases](https://github.com/nyblnet/bento/releases) page or straight
-from [bento.page](https://bento.page/releases/slides/Bento_Slides.bento.html)
-(~560 KB, no account, no installer). Open it in any modern browser and it *is*
-the editor. Save, and it rewrites itself with your deck inside.
+**Build this edition:** follow [the Windows Server setup guide](server/import/README.md)
+or run `npm ci` and `npm run build:single` in `slides/`. The result is
+`slides/dist-single/Bento_Slides.bento.html`, containing the editor and the
+Highcharts runtime. The intranet conversion service uses this local file.
 
 ## Highcharts 版（本 Fork）
 

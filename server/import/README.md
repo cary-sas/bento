@@ -15,7 +15,6 @@
 ```powershell
 git clone https://github.com/cary-sas/bento.git D:\bento
 Set-Location D:\bento
-git switch feat/windows-import-server
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\server\import\Setup.ps1
 Copy-Item .\server\import\config.example.ps1 .\server\import\config.local.ps1
 notepad .\server\import\config.local.ps1

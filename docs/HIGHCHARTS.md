@@ -11,7 +11,8 @@ Highcharts Core、highcharts-more、xrange、exporting 和 accessibility 模块�
 
 ```powershell
 Set-Location D:\bento
-git pull --ff-only
+git switch main
+git pull --ff-only origin main
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\server\import\Setup.ps1
 # 停止并重新启动你现有的 Node 进程或计划任务，使转换服务使用新构建的外壳。
 ```
