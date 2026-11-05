@@ -37,6 +37,7 @@
 import { scrubC0, serialize, x, type XChild, type XNode } from '../xmlout.ts'
 import { EMU_PER_PX, type OutChart, type OutTable } from '../types.ts'
 import type { Report } from '../report.ts'
+import { nativeChartOptions } from './highcharts.ts'
 import { tableFrame } from './tables.ts'
 import { normalizeChartOptions, highchartsDataRows } from '../../../slides/src/highcharts-options.ts'
 
@@ -132,13 +133,13 @@ const strRef = (f: string, vals: string[]): XNode =>
 
 /** Values go through String() verbatim — 4.25 stays "4.25"; the cache must
  *  hold exactly what the deck showed, not a reformatted number. */
-const numRef = (f: string, vals: number[]): XNode =>
+const numRef = (f: string, vals: Array<number | null>): XNode =>
   x('c:numRef', undefined, [
     x('c:f', undefined, [f]),
     x('c:numCache', undefined, [
       x('c:formatCode', undefined, ['General']),
       x('c:ptCount', { val: vals.length }),
-      ...ptNodes(vals.map((v) => String(v))),
+      ...vals.flatMap((v, i) => v === null ? [] : [x('c:pt', { idx: i }, [x('c:v', undefined, [String(v)])])]),
     ]),
   ])
 
@@ -154,20 +155,20 @@ const serNameRef = (si: number, name: string): XNode => strRef(`Sheet1!$${colLet
 
 const AX = { cat0: 1001, val0: 1002, cat1: 1003, val1: 1004 } as const
 
-function catAx(id: number, crossId: number, deleted: boolean): XNode {
+function catAx(id: number, crossId: number, deleted: boolean, horizontal = false): XNode {
   return x('c:catAx', undefined, [
     x('c:axId', { val: id }),
     x('c:scaling', undefined, [x('c:orientation', { val: 'minMax' })]),
     // The secondary category axis exists only to complete the axis pair the
     // schema demands — delete=1 hides it, exactly as PowerPoint writes it.
     x('c:delete', { val: deleted ? 1 : 0 }),
-    x('c:axPos', { val: 'b' }),
+    x('c:axPos', { val: horizontal ? 'l' : 'b' }),
     x('c:crossAx', { val: crossId }),
   ])
 }
 
 interface ValAxOpts {
-  pos: 'l' | 'r' | 'b'
+  pos: 'l' | 'r' | 'b' | 't'
   min?: number
   max?: number
   /** axisLabel.formatter carries '{value}%' → percent tick labels */
@@ -203,7 +204,7 @@ interface SerData {
   gi: number
   name: string
   color: string
-  values: number[]
+  values: Array<number | null>
   smooth: boolean
 }
 
@@ -254,9 +255,9 @@ export function chartExport(
   report: Report,
   where: string,
 ): ChartExport {
-  // Native Highcharts options cannot be interpreted as charts-lite options:
-  // exporting them as clustered columns would silently misstate some charts.
-  if (normalizeChartOptions(el.option) === el.option) {
+  const native = normalizeChartOptions(el.option) === el.option
+  const mapped = native ? nativeChartOptions(el.option) : undefined
+  const nativeFallback = (): ChartExport => {
     report.add('approximated', 'highcharts-as-data-table', where,
       'Highcharts chart exported as an editable data table with complete point JSON; use PDF or slide images to preserve its appearance')
     const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -271,14 +272,16 @@ export function chartExport(
     }
     return { frame: tableFrame(table, shapeId, report, where) }
   }
-  const option = dict(el.option)
+  if (native && !mapped) return nativeFallback()
+  const option = dict(mapped ?? el.option)
   const series = seriesList(option.series)
   const optColors = Array.isArray(option.color) ? (option.color as unknown[]).map((c) => str(c) ?? '') : []
   const colorFor = (i: number): string =>
-    hex6(optColors[i] || palette?.[i % (palette.length || 1)] || STOCK[i % STOCK.length], '5470C6')
+    hex6(str(dict(series[i]?.itemStyle).color) || optColors[i % (optColors.length || 1)] || palette?.[i % (palette.length || 1)] || STOCK[i % STOCK.length], '5470C6')
 
   let coerced = 0
-  const num = (v: unknown): number => {
+  const num = (v: unknown): number | null => {
+    if (native && v === null) return null
     // charts-lite's coercion: Number() of the leaf, non-finite (objects,
     // blanks, text) → 0. See header — faithful to the render, but reported.
     const n = Number(v)
@@ -296,12 +299,12 @@ export function chartExport(
   const fallback = (reason: string): ChartExport => {
     report.add('approximated', 'chart-approximated', where,
       `chart outside the native-export subset (${reason}) rendered as a table of its data — a wrong chart (e.g. a clustered read of a stacked series) would misstate the numbers`)
-    return { frame: dataTableFrame(el, series, option, num, shapeId, report, where) }
+    return native ? nativeFallback() : { frame: dataTableFrame(el, series, option, num, shapeId, report, where) }
   }
 
   if (series.length === 0) return fallback('no series')
   if (series.some((s) => s.stack !== undefined && s.stack !== null && s.stack !== false)) return fallback('stacked series')
-  const unknown = types.find((t) => !['bar', 'line', 'pie', 'scatter'].includes(t))
+  const unknown = types.find((t) => !['bar', 'line', 'area', 'pie', 'scatter'].includes(t))
   if (unknown) return fallback(`unsupported series type '${unknown}'`)
 
   const isPie = types.includes('pie')
@@ -312,7 +315,7 @@ export function chartExport(
 
   // Split bar/line series over the two value axes (yAxisIndex 0/1); each
   // group must be single-type — that is the whole subset for combos.
-  const groups: Array<{ axis: 0 | 1; type: 'bar' | 'line'; sers: SerData[] }> = []
+  const groups: Array<{ axis: 0 | 1; type: 'bar' | 'line' | 'area'; sers: SerData[] }> = []
   if (!isPie && !isScatter) {
     for (const axis of [0, 1] as const) {
       const members = series
@@ -323,7 +326,7 @@ export function chartExport(
       if (groupTypes.size > 1) return fallback('mixed series types on one axis')
       groups.push({
         axis,
-        type: [...groupTypes][0] as 'bar' | 'line',
+        type: [...groupTypes][0] as 'bar' | 'line' | 'area',
         sers: members.map(({ s, i }) => ({
           gi: i,
           name: str(s.name) ?? `Series ${i + 1}`,
@@ -361,7 +364,7 @@ export function chartExport(
         x('c:dPt', undefined, [
           x('c:idx', { val: i }),
           x('c:bubble3D', { val: 0 }),
-          x('c:spPr', undefined, [srgbFill(colorFor(i))]),
+          x('c:spPr', undefined, [srgbFill(hex6(str(dict(items[i]?.itemStyle).color), colorFor(i)))]),
         ]),
       ),
       x('c:cat', undefined, [strRef(catRange(names.length), names)]),
@@ -399,21 +402,22 @@ export function chartExport(
           x('c:idx', { val: i }),
           x('c:order', { val: i }),
           x('c:tx', undefined, [serNameRef(i, str(s.name) ?? `Series ${i + 1}`)]),
-          x('c:spPr', undefined, [x('a:ln', { w: 28575 }, [x('a:noFill')])]),
+          x('c:spPr', undefined, [x('a:ln', { w: 28575 }, [s.scatterLine ? srgbFill(color) : x('a:noFill')])]),
           x('c:marker', undefined, [
-            x('c:symbol', { val: 'circle' }),
+            x('c:symbol', { val: s.markerEnabled === false ? 'none' : 'circle' }),
             x('c:size', { val: 5 }),
             x('c:spPr', undefined, [srgbFill(color)]),
           ]),
           x('c:xVal', undefined, [numRef(catRange(pairs.length), pairs.map((p) => num(p[0])))]),
           x('c:yVal', undefined, [numRef(serRange(i, pairs.length), pairs.map((p) => num(p[1])))]),
+          ...(s.smooth === true ? [x('c:smooth', { val: 1 })] : []),
         ])
       }),
       x('c:axId', { val: AX.cat0 }),
       x('c:axId', { val: AX.val0 }),
     ]))
-    plot.push(valAx(AX.cat0, AX.val0, { pos: 'b' }))
-    plot.push(valAx(AX.val0, AX.cat0, { pos: 'l', gridlines: true, ...axOpts(0) }))
+    plot.push(valAx(AX.cat0, AX.val0, { pos: 'b', min: numOr(dict(option.xAxis).min), max: numOr(dict(option.xAxis).max) }))
+    plot.push(valAx(AX.val0, AX.cat0, { pos: option.horizontal ? 'b' : 'l', gridlines: true, ...axOpts(0) }))
   } else {
     // bar/line, possibly dual-axis: one plot group per axis, category axis
     // shared, the secondary pair deleted-cat + right-val crossing at max —
@@ -421,18 +425,21 @@ export function chartExport(
     for (const g of groups) {
       const catId = g.axis === 0 ? AX.cat0 : AX.cat1
       const valId = g.axis === 0 ? AX.val0 : AX.val1
-      const sers = g.sers.map((s) => (g.type === 'bar' ? barSer(s, labels) : lineSer(s, labels)))
+      const sers = g.sers.map((s) => (g.type === 'line' ? lineSer(s, labels) : barSer(s, labels)))
       plot.push(
         g.type === 'bar'
           ? x('c:barChart', undefined, [
-              x('c:barDir', { val: 'col' }),
+              x('c:barDir', { val: option.horizontal ? 'bar' : 'col' }),
               x('c:grouping', { val: 'clustered' }),
               x('c:varyColors', { val: 0 }),
               ...sers,
               x('c:axId', { val: catId }),
               x('c:axId', { val: valId }),
             ])
-          : x('c:lineChart', undefined, [
+          : g.type === 'area' ? x('c:areaChart', undefined, [
+              x('c:grouping', { val: 'standard' }), x('c:varyColors', { val: 0 }), ...sers,
+              x('c:axId', { val: catId }), x('c:axId', { val: valId }),
+            ]) : x('c:lineChart', undefined, [
               x('c:grouping', { val: 'standard' }),
               x('c:varyColors', { val: 0 }),
               ...sers,
@@ -444,12 +451,12 @@ export function chartExport(
     }
     const dual = groups.some((g) => g.axis === 1)
     if (groups.some((g) => g.axis === 0)) {
-      plot.push(catAx(AX.cat0, AX.val0, false))
-      plot.push(valAx(AX.val0, AX.cat0, { pos: 'l', gridlines: true, ...axOpts(0) }))
+      plot.push(catAx(AX.cat0, AX.val0, false, option.horizontal === true))
+      plot.push(valAx(AX.val0, AX.cat0, { pos: option.horizontal ? 'b' : 'l', gridlines: true, ...axOpts(0) }))
     }
     if (dual) {
-      plot.push(catAx(AX.cat1, AX.val1, true))
-      plot.push(valAx(AX.val1, AX.cat1, { pos: 'r', crossesMax: true, ...axOpts(1) }))
+      plot.push(catAx(AX.cat1, AX.val1, true, option.horizontal === true))
+      plot.push(valAx(AX.val1, AX.cat1, { pos: option.horizontal ? 't' : 'r', crossesMax: true, ...axOpts(1) }))
     }
   }
 
@@ -498,6 +505,8 @@ export function chartExport(
     ]),
   )
 
+  if (native) report.add('approximated', 'highcharts-native-chart', where,
+    'Highcharts exported as an editable PowerPoint chart; data and basic chart type are preserved, Office styling and layout may differ')
   if (coerced > 0) {
     report.add('approximated', 'chart-data-coerced', where,
       `${coerced === 1 ? 'a non-numeric datum' : 'non-numeric data'} coerced to 0 — matching what charts-lite rendered, but the cache now asserts zeros`)
@@ -539,14 +548,14 @@ function dataTableFrame(
   el: OutChart,
   series: Dict[],
   option: Dict,
-  num: (v: unknown) => number,
+  num: (v: unknown) => number | null,
   shapeId: number,
   report: Report,
   where: string,
 ): XNode {
   const firstPie = series.find((s) => str(s.type) === 'pie')
   let labels: string[]
-  let cols: Array<{ name: string; values: number[] }>
+  let cols: Array<{ name: string; values: Array<number | null> }>
   if (firstPie) {
     const items = (Array.isArray(firstPie.data) ? firstPie.data : []).map(dict)
     labels = items.map((it, i) => str(it.name) ?? String(i + 1))
