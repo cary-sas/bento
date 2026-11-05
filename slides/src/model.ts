@@ -3,7 +3,7 @@
 // The bento/slides document model. This JSON is what lives inside the
 // <script type="application/bento+json"> block of a .bento.html file.
 
-import { normalizeChartOptions } from './highcharts-options'
+import { normalizeChartOptions } from './highcharts-options.ts'
 
 export const FORMAT = 'bento/slides'
 export const FORMAT_VERSION = 1

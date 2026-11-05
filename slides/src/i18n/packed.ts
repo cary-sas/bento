@@ -15,6 +15,7 @@ export const PACKED_LOCALES = ["ja","zh-Hans","zh-Hant","es","fr","de","it","pt"
 
 /** English source string -> translations, positional by PACKED_LOCALES. */
 export const PACKED: Record<string, ReadonlyArray<string | 0>> = {
+  "This Highcharts edition is updated from your internal server.": ["このHighcharts版は社内サーバーから更新してください。","此 Highcharts 版本请通过内网服务器更新。","此 Highcharts 版本請透過內網伺服器更新。","Esta edición de Highcharts se actualiza desde su servidor interno.","Cette édition Highcharts est mise à jour depuis votre serveur interne.","Diese Highcharts-Ausgabe wird über Ihren internen Server aktualisiert.","Questa edizione Highcharts si aggiorna dal server interno.","Esta edição do Highcharts é atualizada pelo servidor interno."],
   "Renderer": ["レンダラー","绘图引擎","繪圖引擎","Motor gráfico","Moteur graphique","Diagramm-Engine","Motore grafico","Motor gráfico"],
   "Import CSV": ["CSVを読み込む","导入 CSV","匯入 CSV","Importar CSV","Importer CSV","CSV importieren","Importa CSV","Importar CSV"],
   "CSV file": ["CSVファイル","CSV 文件","CSV 檔案","Archivo CSV","Fichier CSV","CSV-Datei","File CSV","Arquivo CSV"],

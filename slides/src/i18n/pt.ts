@@ -7,6 +7,7 @@
 import type { Catalog } from '../i18n'
 
 export const pt: Catalog = {
+  "This Highcharts edition is updated from your internal server.": "Esta edição do Highcharts é atualizada pelo servidor interno.",
   "Renderer": "Motor gráfico",
   "Import CSV": "Importar CSV",
   "CSV file": "Arquivo CSV",

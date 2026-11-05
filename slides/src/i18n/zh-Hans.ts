@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const zhHans: Catalog = {
+  "This Highcharts edition is updated from your internal server.": "此 Highcharts 版本请通过内网服务器更新。",
   "Renderer": "绘图引擎",
   "Import CSV": "导入 CSV",
   "CSV file": "CSV 文件",

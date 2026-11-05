@@ -4,6 +4,7 @@
 import type { Catalog } from '../i18n'
 
 export const ja: Catalog = {
+  "This Highcharts edition is updated from your internal server.": "このHighcharts版は社内サーバーから更新してください。",
   "Renderer": "レンダラー",
   "Import CSV": "CSVを読み込む",
   "CSV file": "CSVファイル",
