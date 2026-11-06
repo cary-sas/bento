@@ -45,6 +45,7 @@ import {
 } from './media.ts'
 import { textFrom, type TextDeps } from './text.ts'
 import { tableFrom } from './tables.ts'
+import { shapeImage } from './shape-image.ts'
 import { chartFrom } from './charts.ts'
 import { shapeFrom, groupChildren, type ShapeDeps, type GroupFrame } from './shapes.ts'
 import {
@@ -421,7 +422,13 @@ export async function convertPptx(bytes: Uint8Array): Promise<ConvertResult> {
         if (frame) deps.frame = frame
         if (groupId) deps.groupId = groupId
         const res = shapeFrom(el, ctx, deps)
-        if (res) elements.push(res.shape, ...(res.extraShapes ?? []))
+        if (res) {
+          const layers = [res.shape, ...(res.extraShapes ?? [])]
+          // Connectors retain their editable endpoint relationships.
+          if (local === 'sp' && layers.every(s => s.shape === 'path' && s.d)) {
+            elements.push(shapeImage(layers, assets))
+          } else elements.push(...layers)
+        }
         if (local === 'cxnSp') return // connectors carry no txBody
 
         // an untitled package is named by its first title placeholder's text
