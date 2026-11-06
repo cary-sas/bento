@@ -144,6 +144,20 @@ const has = (r: ReturnType<Report['build']>, code: string): boolean =>
     'negative control: identically-styled runs do NOT report flattening')
 }
 
+// Legacy symbol fonts must never leak Latin P or private-use codes.
+for (const inherited of [false, true]) for (const glyph of ['P', '&#xF050;']) {
+  const declaration = `<a:buFont typeface="Wingdings 2"/><a:buChar char="${glyph}"/>`
+  const sp = makeSp(`<p:txBody><a:bodyPr/><a:lstStyle>${inherited ? `<a:lvl1pPr>${declaration}</a:lvl1pPr>` : ''}</a:lstStyle>
+    <a:p><a:pPr>${inherited ? '' : declaration}</a:pPr><a:r><a:t>Item</a:t></a:r></a:p></p:txBody>`)
+  const result = run(sp)
+  ok(!!result.out?.html.includes('<li>Item</li>'), 'legacy symbol becomes editable list, including inherited font')
+  ok(has(result.report, 'bullet-symbol-substituted'), 'non-exact symbol substitution is reported')
+}
+{
+  const result = run(makeSp(`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:buFont typeface="Arial"/><a:buChar char="P"/></a:pPr><a:r><a:t>Item</a:t></a:r></a:p></p:txBody>`))
+  ok(!!result.out?.html.startsWith('P'), 'ordinary-font intentional P is retained')
+}
+
 // ------------------------------------------------------------------ bullets
 {
   const sp = makeSp(`<p:txBody><a:bodyPr/><a:lstStyle/>
