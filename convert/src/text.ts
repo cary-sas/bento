@@ -373,14 +373,31 @@ export function textFrom(sp: XElem, ctx: InheritCtx, deps: TextDeps): OutText | 
 
     // bullet: the paragraph's own declaration overlays the resolved default
     // AS A UNIT — a pPr buNone silences an inherited buChar, never merges.
-    let bullet: { kind: 'none' | 'char' | 'autoNum'; char?: string; scheme?: string; startAt?: number } = d.bullet
+    let bullet: { kind: 'none' | 'char' | 'autoNum'; char?: string; font?: string; scheme?: string; startAt?: number } = d.bullet
     if (pPr) {
       if (kid(pPr, NS.a, 'buNone')) bullet = { kind: 'none' }
       else {
         const auto = kid(pPr, NS.a, 'buAutoNum')
         const ch = kid(pPr, NS.a, 'buChar')
         if (auto) bullet = { kind: 'autoNum', scheme: attr(auto, 'type') ?? 'arabicPeriod', startAt: intAttr(auto, 'startAt', 1) }
-        else if (ch) bullet = { kind: 'char', char: attr(ch, 'char') ?? '•' }
+        else if (ch) bullet = { kind: 'char', char: attr(ch, 'char') ?? '•', font: kid(pPr, NS.a, 'buFont') ? attr(kid(pPr, NS.a, 'buFont')!, 'typeface') : undefined }
+      }
+    }
+
+    // Legacy symbol-font codes are glyph indices, not Latin text. Private-use
+    // aliases carry the same low byte. Never render them with the body font.
+    if (bullet.kind === 'char') {
+      const glyph = bullet.char ?? '•'
+      const cp = glyph.codePointAt(0) ?? 0
+      const font = (bullet.font ?? '').trim().toLowerCase()
+      const legacy = /^(wingdings(?: [23])?|webdings|symbol)$/.test(font)
+      if ((legacy && (cp <= 255 || (cp >= 0xf000 && cp <= 0xf0ff))) || (cp >= 0xf000 && cp <= 0xf0ff)) {
+        const code = cp >= 0xf000 ? cp - 0xf000 : cp
+        // Adobe/Microsoft Symbol's bullet is 0xB7. Other legacy glyphs need
+        // their font-specific mapping; use a visible list marker, report it.
+        bullet = { ...bullet, char: '•' }
+        if (!(font === 'symbol' && code === 0xb7)) note('approximated', 'bullet-symbol-substituted',
+          `legacy bullet U+${cp.toString(16).toUpperCase()} (${bullet.font ?? 'unspecified font'}) replaced with a Unicode bullet`)
       }
     }
 
