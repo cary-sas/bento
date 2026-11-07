@@ -162,10 +162,10 @@ const RED = '<a:solidFill><a:srgbClr val="FF0000"/></a:solidFill>'
 // ------------------------------------------------------------- unknown preset
 {
   const c = ctxOf()
-  const r = shapeFrom(spOf('14', `${XFRM_100}<a:prstGeom prst="hexagon"><a:avLst/></a:prstGeom>${RED}`), c, deps())
+  const r = shapeFrom(spOf('14', `${XFRM_100}<a:prstGeom prst="unknownPreset"><a:avLst/></a:prstGeom>${RED}`), c, deps())
   ok(r!.shape.shape === 'rect', 'off-census preset falls back to rect')
   const e = c.report.build().entries.find((x) => x.code === 'shape-approximated')
-  ok(!!e && e.verdict === 'approximated' && e.detail.includes('hexagon'),
+  ok(!!e && e.verdict === 'approximated' && e.detail.includes('unknownPreset'),
     'shape-approximated names the preset in its detail')
 }
 

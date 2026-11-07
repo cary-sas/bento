@@ -1,3 +1,4 @@
+import { presetDefinition } from './presets.ts'
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 The Bento authors
 //
@@ -584,6 +585,15 @@ export function shapeFrom(sp: XElem, ctx: InheritCtx, deps: ShapeDeps): ShapeRes
     }
   }
   const adj = adjOf(geom)
+  let resolvedGeom = geom
+  if (geom?.local === 'prstGeom' && !['rect','roundRect','ellipse','triangle','rightArrow','line','straightConnector1','chevron','upArrowCallout','round2SameRect','bentConnector2','bentConnector3','bentConnector4'].includes(prst)) {
+    resolvedGeom = presetDefinition(geom)
+    if (resolvedGeom) {
+      try { custom = customGeometry(resolvedGeom, w, h, flipH, flipV) }
+      catch (error) { ctx.report.add('approximated', 'preset-geometry-invalid', where,
+        `preset geometry could not be evaluated: ${error instanceof Error ? error.message : 'invalid path'}`) }
+    }
+  }
 
   const style = chainStyle(sp, ctx)
   const stroke = resolveStroke(sp, ctx, style, where)
@@ -728,18 +738,25 @@ export function shapeFrom(sp: XElem, ctx: InheritCtx, deps: ShapeDeps): ShapeRes
       if (stroke.start !== 'none' || stroke.end !== 'none') ctx.report.add('approximated', 'connector-tip-dropped', where,
         'custom-path connector arrowheads are not rendered on bento path shapes')
     }
-    const textRect = geom && kid(geom, NS.a, 'rect')
+    const textRect = resolvedGeom && kid(resolvedGeom, NS.a, 'rect')
     if (textRect && hasTextContent(sp) &&
       (!['0','l'].includes(attr(textRect,'l') ?? '') || !['0','t'].includes(attr(textRect,'t') ?? '') ||
        !['r','w'].includes(attr(textRect,'r') ?? '') || !['b','h'].includes(attr(textRect,'b') ?? ''))) {
       ctx.report.add('approximated', 'custom-text-inset', where,
         'custom geometry text rectangle is not yet mapped; text uses the shape frame and text-body insets')
     }
+    if (custom.some(path => path.fillMode)) ctx.report.add('approximated', 'geometry-face-shading', where,
+      'preset face lighten/darken shading approximated in linear RGB; Office material lighting is not reproduced')
     const base = { ...shape }
     const groupId = deps.groupId ?? `s${deps.slideIndex}-${spId}-g`
     const layers = custom.map((path, i): OutShape => {
       const layer = { ...base, id: i ? `${base.id}-path-${i}` : base.id, d: path.d, groupId }
       if (!path.fill) { layer.fill = 'transparent'; delete layer.fillGradient }
+      if (path.fillMode) {
+        layer.fill = pathShade(layer.fill, path.fillMode)
+        if (layer.fillGradient) layer.fillGradient = { ...layer.fillGradient,
+          stops: layer.fillGradient.stops.map(stop => ({ ...stop, color: pathShade(stop.color, path.fillMode!) })) }
+      }
       if (!path.stroke) { layer.stroke = 'transparent'; layer.strokeWidth = 0 }
       return layer
     })
@@ -899,4 +916,18 @@ export function groupChildren(grpSp: XElem, ctx: InheritCtx, deps: ShapeDeps): G
   }
   walk(grpSp, undefined, false)
   return out
+}
+
+/** DrawingML face shading. Preserve alpha and shade each gradient stop independently.
+ * The 20/40% face-lighting convention is approximated in linear RGB; the import
+ * report distinguishes it from an exact Office lighting/material rendering. */
+function pathShade(color: string, mode: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(color)
+  const rgba = /^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/.exec(color)
+  if (!hex && !rgba) return color
+  const rgb = hex ? [0,2,4].map(i => parseInt(hex[1].slice(i,i+2),16)) : rgba!.slice(1,4).map(Number)
+  const amount = mode.endsWith('Less') ? 0.2 : 0.4
+  const out = rgb.map(v => { const linear = (v / 255) ** 2.2
+    return Math.round(255 * (mode.startsWith('lighten') ? linear + (1-linear)*amount : linear*(1-amount)) ** (1/2.2)) })
+  return rgba ? `rgba(${out.join(',')},${rgba[4]})` : '#'+out.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase()
 }
