@@ -2,10 +2,10 @@
 // DrawingML guide evaluation and custom paths. Converter-only: no DOM, eval,
 // Office runtime or additional dependency is shipped in a saved document.
 import { NS, kid, kids, attr, type XElem } from './xml.ts'
-export interface GeometryPath { d: string; fill: boolean; stroke: boolean }
+export interface GeometryPath { d: string; fill: boolean; stroke: boolean; fillMode?: string }
 const ANGLE = Math.PI / 10800000
 const finite = (v: number): number => {
-  if (!Number.isFinite(v) || Math.abs(v) > 1e15) throw new Error('invalid geometry number')
+  if (!Number.isFinite(v) || Math.abs(v) > 1e100) throw new Error('invalid geometry number')
   return v
 }
 export function guideValues(geom: XElem, w: number, h: number): Map<string, number> {
@@ -70,9 +70,9 @@ export function customGeometry(geom:XElem, w:number, h:number, flipH=false, flip
     const ph=attr(path,'h')===undefined?h*9525:value(attr(path,'h'))
     if(!(pw>0&&ph>0))throw new Error('invalid geometry path viewport')
     const fill=attr(path,'fill')??'norm'
-    if(!['norm','none'].includes(fill))throw new Error(`unsupported geometry fill modifier: ${fill}`)
+    if(!['norm','none','lighten','lightenLess','darken','darkenLess'].includes(fill))throw new Error(`unsupported geometry fill modifier: ${fill}`)
     const sx=w/pw,sy=h/ph
-    const fmt=(n:number)=>String(Math.round(finite(n)*10000)/10000)
+    const fmt=(n:number)=>{if(Math.abs(n)>1e9)throw new Error('geometry coordinate exceeds output limit');return String(Math.round(finite(n)*10000)/10000)}
     const pair=(x:number,y:number)=>`${fmt(flipH?w-x*sx:x*sx)} ${fmt(flipV?h-y*sy:y*sy)}`
     const out:string[]=[]
     let x=0,y=0,startX=0,startY=0,started=false
@@ -86,7 +86,8 @@ export function customGeometry(geom:XElem, w:number, h:number, flipH=false, flip
       if(cmd.local==='arcTo') {
         const rx=value(attr(cmd,'wR')),ry=value(attr(cmd,'hR'))
         const start=value(attr(cmd,'stAng'))*ANGLE,sweep=value(attr(cmd,'swAng'))*ANGLE
-        if(!(rx>0&&ry>0)||Math.abs(sweep)>2*Math.PI+1e-9)throw new Error('invalid geometry arc')
+        if(rx<0||ry<0||Math.abs(sweep)>2*Math.PI+1e-9)throw new Error('invalid geometry arc')
+        if(rx===0||ry===0) continue // collapsed adjustment corner: no arc displacement
         // DrawingML angles are polar angles, not ellipse parameter angles.
         const at=(a:number)=>{const t=Math.atan2(rx*Math.sin(a),ry*Math.cos(a));return [rx*Math.cos(t),ry*Math.sin(t)]}
         const p=at(start),cx=x-p[0],cy=y-p[1],n=Math.ceil(Math.abs(sweep)/Math.PI)
@@ -104,6 +105,6 @@ export function customGeometry(geom:XElem, w:number, h:number, flipH=false, flip
     }
     const d=out.join(' ');bytes+=d.length
     if(!d||bytes>200000)throw new Error('invalid or excessive geometry output')
-    return {d,fill:fill!=='none',stroke:!['0','false'].includes(attr(path,'stroke')??'true')}
+    return {d,fill:fill!=='none',...(fill!=='norm'&&fill!=='none'?{fillMode:fill}:{}),stroke:!['0','false'].includes(attr(path,'stroke')??'true')}
   })
 }
