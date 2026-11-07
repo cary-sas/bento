@@ -30,6 +30,7 @@ jobs:
           node scripts/test-convert/highcharts-export.ts
           node scripts/test-convert/geometry.ts
           node scripts/test-convert/presets.ts
+          node scripts/test-convert/diagrams.ts
           node --test server/import/server.test.mjs
           node scripts/build-modelkeys.mjs --check
           node scripts/build-i18n.mjs --check

@@ -45,6 +45,7 @@ import {
 } from './media.ts'
 import { textFrom, type TextDeps } from './text.ts'
 import { tableFrom } from './tables.ts'
+import { diagramGroup, DGM } from './diagrams.ts'
 import { shapeImage } from './shape-image.ts'
 import { chartFrom } from './charts.ts'
 import { shapeFrom, groupChildren, type ShapeDeps, type GroupFrame } from './shapes.ts'
@@ -508,7 +509,20 @@ export async function convertPptx(bytes: Uint8Array): Promise<ConvertResult> {
         const where = whereOf(el, n)
         const graphic = kid(el, NS.a, 'graphic')
         const gd = graphic && kid(graphic, NS.a, 'graphicData')
-        if (gd && kid(gd, NS.a, 'tbl')) {
+        if (gd && kid(gd, DGM, 'relIds')) {
+          const start=elements.length
+          try {
+            const group=diagramGroup(gd,slideRels,name=>xmlOf(parts,name),frame??resolveFrame(el,ctx),cNvPrIdOf(el))
+            collectIds(group.children)
+            emit(group,undefined,groupId??`s${n}-diagram-${cNvPrIdOf(el)}`)
+            if(elements.length===start)throw new Error('cached diagram emitted no visible elements')
+            report.add('approximated','diagram-cached-layout',where,'SmartArt imported from cached layout; automatic diagram relayout is not retained')
+            return
+          } catch(error) {
+            elements.splice(start)
+            report.add('dropped','diagram-import-unsupported',where,`SmartArt requires a supported cached drawing: ${error instanceof Error?error.message:'invalid diagram'}`)
+          }
+        } else if (gd && kid(gd, NS.a, 'tbl')) {
           const table = tableFrom(kid(gd, NS.a, 'tbl')!, frame ?? resolveFrame(el, ctx),
             `s${n}-${cNvPrIdOf(el)}`, ctx, baseTextDeps, where)
           if (table) {
